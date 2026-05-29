@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0F0F0F">
+<title>Strength Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { 
+    height: 100%; 
+    background: #0F0F0F; 
+    color: #E8E8E8; 
+    font-family: 'DM Sans', system-ui, sans-serif; 
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  button { font-family: inherit; }
+  .email-banner { 
+    background: linear-gradient(135deg, #1a3a1a, #0F0F0F); 
+    border: 1px solid #2a5a2a; 
+    border-radius: 14px; 
+    padding: 18px; 
+    margin-bottom: 16px;
+    animation: slideDown 0.3s ease;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const DAYS = [
+  {
+    id: "a", name: "Day A", subtitle: "Squat Focus", color: "#E63946",
+    exercises: [
+      { id: "a1", name: "Barbell Back Squat", sets: 4, reps: "5", rest: "3 min" },
+      { id: "a2", name: "Barbell Bench Press", sets: 4, reps: "6-8", rest: "2-3 min" },
+      { id: "a3", name: "Barbell Row", sets: 3, reps: "8-10", rest: "2 min" },
+      { id: "a4", name: "DB Romanian Deadlift", sets: 3, reps: "10-12", rest: "90 sec" },
+      { id: "a5", name: "Cable Face Pull", sets: 3, reps: "15-20", rest: "60 sec" },
+      { id: "a6", name: "Plank Hold", sets: 3, reps: "30-45s", rest: "60 sec" },
+    ],
+  },
+  {
+    id: "b", name: "Day B", subtitle: "Press Focus", color: "#457B9D",
+    exercises: [
+      { id: "b1", name: "Barbell OHP", sets: 4, reps: "5-6", rest: "3 min" },
+      { id: "b2", name: "Deadlift (Trap/Conv)", sets: 3, reps: "5", rest: "3 min" },
+      { id: "b3", name: "Incline DB Press", sets: 3, reps: "8-10", rest: "2 min" },
+      { id: "b4", name: "Lat Pulldown", sets: 3, reps: "10-12", rest: "90 sec" },
+      { id: "b5", name: "Leg Press", sets: 3, reps: "10-12", rest: "2 min" },
+      { id: "b6", name: "Curl + Pushdown SS", sets: 3, reps: "12 ea", rest: "60 sec" },
+    ],
+  },
+  {
+    id: "c", name: "Day C", subtitle: "Deadlift Focus", color: "#2A9D8F",
+    exercises: [
+      { id: "c1", name: "Barbell Deadlift", sets: 4, reps: "3-5", rest: "3-4 min" },
+      { id: "c2", name: "Front/Goblet Squat", sets: 3, reps: "8-10", rest: "2 min" },
+      { id: "c3", name: "DB Bench Press", sets: 3, reps: "10-12", rest: "90 sec" },
+      { id: "c4", name: "Cable Row", sets: 3, reps: "10-12", rest: "90 sec" },
+      { id: "c5", name: "Walking Lunges", sets: 3, reps: "10/leg", rest: "90 sec" },
+      { id: "c6", name: "Hanging Leg Raise", sets: 3, reps: "10-15", rest: "60 sec" },
+    ],
+  },
+];
+
+const SK = "workout-log-v1";
+const USER_EMAIL = "kalinowski89@gmail.com";
+const load = () => { try { const d = JSON.parse(localStorage.getItem(SK)) || {}; if (!d.sessions) d.sessions = {}; if (!d.bodyweight) d.bodyweight = {}; return d; } catch { return { sessions: {}, bodyweight: {} }; } };
+const save = (d) => { try { localStorage.setItem(SK, JSON.stringify(d)); } catch(e) { console.error(e); } };
+
+const fmtDate = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const parseRest = (s) => { const m = s.match(/(\d+)/); if (!m) return 120; const n = parseInt(m[1]); return s.includes("min") ? n * 60 : n; };
+
+function buildWorkoutEmail(day, session, log, tk) {
+  const lines = [];
+  lines.push("WORKOUT LOG");
+  lines.push("Date: " + tk);
+  lines.push("Program: 3-Day Full Body Strength (Intermediate)");
+  lines.push("Session: " + day.name + " - " + day.subtitle);
+  lines.push("");
+  lines.push("--- EXERCISES ---");
+  lines.push("");
+
+  day.exercises.forEach((ex) => {
+    const exData = session[ex.id] || {};
+    lines.push(ex.name + " (Target: " + ex.sets + " x " + ex.reps + ")");
+
+    // Current session sets
+    const setLines = [];
+    for (let i = 0; i < ex.sets; i++) {
+      const sd = exData[i];
+      if (sd && sd.done) {
+        setLines.push("  Set " + (i+1) + ": " + (sd.weight || "BW") + " lb x " + (sd.reps || "?") + " reps");
+      } else {
+        setLines.push("  Set " + (i+1) + ": skipped");
+      }
+    }
+    lines.push(...setLines);
+
+    // Previous session comparison
+    const prevKeys = Object.keys(log.sessions)
+      .filter(k => k !== `${tk}-${day.id}` && k.endsWith(`-${day.id}`))
+      .sort().reverse();
+    for (const k of prevKeys) {
+      if (log.sessions[k]?.[ex.id]) {
+        const prev = log.sessions[k][ex.id];
+        const prevSets = Object.keys(prev).sort((a,b)=>a-b)
+          .map(si => (prev[si].weight||"?") + "x" + (prev[si].reps||"?")).join(", ");
+        lines.push("  Previous (" + k.slice(0,10) + "): " + prevSets);
+        break;
+      }
+    }
+    lines.push("");
+  });
+
+  // Volume summary
+  lines.push("--- VOLUME SUMMARY ---");
+  let totalWeight = 0;
+  let totalReps = 0;
+  let totalSetsCompleted = 0;
+  day.exercises.forEach(ex => {
+    const exData = session[ex.id] || {};
+    for (let i = 0; i < ex.sets; i++) {
+      const sd = exData[i];
+      if (sd && sd.done) {
+        totalSetsCompleted++;
+        const w = parseFloat(sd.weight) || 0;
+        const r = parseInt(sd.reps) || 0;
+        totalReps += r;
+        totalWeight += w * r;
+      }
+    }
+  });
+  lines.push("Sets completed: " + totalSetsCompleted + "/" + day.exercises.reduce((a,e) => a + e.sets, 0));
+  lines.push("Total reps: " + totalReps);
+  lines.push("Total volume: " + totalWeight.toLocaleString() + " lb");
+  lines.push("");
+
+  // Bodyweight
+  const todayBW = log.bodyweight?.[tk];
+  if (todayBW) {
+    lines.push("--- BODYWEIGHT ---");
+    lines.push("Today: " + todayBW + " lb");
+    const bwDates = Object.keys(log.bodyweight).filter(d => d !== tk).sort().reverse();
+    if (bwDates.length > 0) {
+      lines.push("Previous (" + bwDates[0] + "): " + log.bodyweight[bwDates[0]] + " lb");
+      const diff = (parseFloat(todayBW) - parseFloat(log.bodyweight[bwDates[0]])).toFixed(1);
+      lines.push("Change: " + (diff > 0 ? "+" : "") + diff + " lb");
+    }
+    if (bwDates.length >= 6) {
+      const oldest = bwDates[bwDates.length - 1];
+      const totalDiff = (parseFloat(todayBW) - parseFloat(log.bodyweight[oldest])).toFixed(1);
+      lines.push("Since " + oldest + ": " + (totalDiff > 0 ? "+" : "") + totalDiff + " lb");
+    }
+    lines.push("");
+  }
+
+  lines.push("--- PASTE INTO CLAUDE FOR FEEDBACK ---");
+  lines.push("Ask: Review my workout log above. Flag any exercises where I should increase or decrease weight next session. Note any volume or rep range issues." + (todayBW ? " Also comment on my bodyweight trend and whether my rate of loss is healthy given my training." : "") + " Suggest what to focus on for my next " + day.name + " session.");
+
+  return lines.join("\n");
+}
+
+function App() {
+  const [activeDay, setActiveDay] = useState(0);
+  const [log, setLog] = useState(load);
+  const [activeSet, setActiveSet] = useState(null);
+  const [historyView, setHistoryView] = useState(null);
+  const [restTimer, setRestTimer] = useState(null);
+  const [restLeft, setRestLeft] = useState(0);
+  const [showEmailBanner, setShowEmailBanner] = useState(false);
+  const [emailSent, setEmailSent] = useState({});
+  const prevCompleted = useRef(0);
+
+  const persist = useCallback((fn) => {
+    setLog(prev => {
+      const next = typeof fn === 'function' ? fn(prev) : fn;
+      save(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (restTimer === null) return;
+    if (restLeft <= 0) { setRestTimer(null); return; }
+    const t = setTimeout(() => setRestLeft(p => p - 1), 1000);
+    return () => clearTimeout(t);
+  }, [restTimer, restLeft]);
+
+  const day = DAYS[activeDay];
+  const tk = todayKey();
+  const sk = `${tk}-${day.id}`;
+  const session = log.sessions[sk] || {};
+
+  const totalSets = day.exercises.reduce((a, e) => a + e.sets, 0);
+  const completedSets = day.exercises.reduce((a, ex) => a + Object.values(session[ex.id] || {}).filter(s => s.done).length, 0);
+  const sessionComplete = completedSets === totalSets && totalSets > 0;
+
+  // Detect session completion
+  useEffect(() => {
+    if (sessionComplete && prevCompleted.current < totalSets && !emailSent[sk]) {
+      setShowEmailBanner(true);
+    }
+    prevCompleted.current = completedSets;
+  }, [completedSets, sessionComplete]);
+
+  const openEmailDraft = () => {
+    const body = buildWorkoutEmail(day, session, log, tk);
+    const subject = "Workout Log - " + day.name + " " + day.subtitle + " - " + tk;
+    const to = USER_EMAIL;
+    window.location.href = "mailto:" + encodeURIComponent(to) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    setEmailSent(prev => ({ ...prev, [sk]: true }));
+    setShowEmailBanner(false);
+  };
+
+  const copyToClipboard = () => {
+    const body = buildWorkoutEmail(day, session, log, tk);
+    navigator.clipboard.writeText(body).then(() => {
+      setEmailSent(prev => ({ ...prev, [sk]: true }));
+      setShowEmailBanner(false);
+      alert("Workout log copied to clipboard!");
+    }).catch(() => {
+      // Fallback
+      const ta = document.createElement("textarea");
+      ta.value = body;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setEmailSent(prev => ({ ...prev, [sk]: true }));
+      setShowEmailBanner(false);
+      alert("Workout log copied to clipboard!");
+    });
+  };
+
+  const updateSet = (exId, si, field, value) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk][exId]) n.sessions[sk][exId] = {};
+      if (!n.sessions[sk][exId][si]) n.sessions[sk][exId][si] = {};
+      n.sessions[sk][exId][si][field] = value;
+      return n;
+    });
+  };
+
+  const markDone = (exId, si, restSec) => {
+    updateSet(exId, si, "done", true);
+    setActiveSet(null);
+    setRestTimer(`${exId}-${si}`);
+    setRestLeft(restSec);
+  };
+
+  const getLast = (exId) => {
+    const keys = Object.keys(log.sessions).filter(k => k !== sk && k.endsWith(`-${day.id}`)).sort().reverse();
+    for (const k of keys) { if (log.sessions[k]?.[exId]) return { date: k.slice(0,10), data: log.sessions[k][exId] }; }
+    return null;
+  };
+
+  const getHistory = (exId) =>
+    Object.keys(log.sessions).filter(k => k.endsWith(`-${day.id}`) && log.sessions[k]?.[exId])
+      .sort().reverse().slice(0, 10).map(k => ({ date: k.slice(0,10), data: log.sessions[k][exId] }));
+
+  const clearToday = () => { persist(prev => { const n = JSON.parse(JSON.stringify(prev)); delete n.sessions[sk]; return n; }); setShowEmailBanner(false); };
+
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(log, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `workout-log-${tk}.json`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // History view
+  if (historyView) {
+    const ex = day.exercises.find(e => e.id === historyView);
+    const hist = getHistory(historyView);
+    return (
+      <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
+        <button onClick={() => setHistoryView(null)} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer", padding: "8px 0" }}>← Back</button>
+        <h2 style={{ margin: "12px 0 4px", fontSize: 20, fontWeight: 700 }}>{ex?.name}</h2>
+        <p style={{ color: "#666", fontSize: 13, margin: "0 0 20px" }}>Last {hist.length} sessions</p>
+        {hist.length === 0 && <p style={{ color: "#555", fontSize: 14 }}>No history yet.</p>}
+        {hist.map((h, i) => (
+          <div key={i} style={{ background: "#181818", borderRadius: 10, border: "1px solid #252525", padding: "12px 14px", marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginBottom: 8 }}>{h.date}</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {Object.keys(h.data).sort((a,b)=>a-b).map(si => {
+                const s = h.data[si];
+                return <div key={si} style={{ background: "#222", borderRadius: 6, padding: "6px 10px", fontSize: 13 }}>
+                  <span style={{ color: "#999" }}>S{parseInt(si)+1}</span>{" "}
+                  <span style={{ color: "#E8E8E8", fontWeight: 600 }}>{s.weight||"—"}</span>
+                  <span style={{ color: "#666" }}> lb × </span>
+                  <span style={{ color: "#E8E8E8" }}>{s.reps||"—"}</span>
+                </div>;
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 120px" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "#555", fontFamily: "monospace" }}>{fmtDate(new Date())}</div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Strength Tracker</h1>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={exportData} style={{ background: "#1A1A1A", border: "1px solid #333", color: "#888", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Export</button>
+        </div>
+      </div>
+
+      {/* Session Complete Banner */}
+      {(showEmailBanner || (sessionComplete && !emailSent[sk])) && (
+        <div className="email-banner">
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#4ade80", marginBottom: 6 }}>Session Complete! 💪</div>
+          <div style={{ fontSize: 13, color: "#999", marginBottom: 14 }}>Send yourself a workout summary to paste into Claude for feedback.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={openEmailDraft} style={{ flex: 1, padding: "12px", background: "#4ade80", border: "none", borderRadius: 8, color: "#0F0F0F", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              Email Summary
+            </button>
+            <button onClick={copyToClipboard} style={{ padding: "12px 16px", background: "#333", border: "none", borderRadius: 8, color: "#CCC", fontSize: 13, cursor: "pointer" }}>
+              Copy
+            </button>
+          </div>
+          <button onClick={() => { setShowEmailBanner(false); setEmailSent(prev => ({...prev, [sk]: true})); }} style={{ background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer", marginTop: 10, textDecoration: "underline", width: "100%" }}>Dismiss</button>
+        </div>
+      )}
+
+      {/* Manual email button when session is done and banner dismissed */}
+      {sessionComplete && emailSent[sk] && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <button onClick={openEmailDraft} style={{ flex: 1, padding: "10px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#888", fontSize: 12, cursor: "pointer" }}>📧 Re-send Summary</button>
+          <button onClick={copyToClipboard} style={{ padding: "10px 14px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#888", fontSize: 12, cursor: "pointer" }}>📋 Copy</button>
+        </div>
+      )}
+
+      {/* Bodyweight */}
+      {(() => {
+        const bw = log.bodyweight?.[tk] || "";
+        const bwDates = Object.keys(log.bodyweight || {}).filter(d => d !== tk).sort().reverse();
+        const lastBW = bwDates.length > 0 ? log.bodyweight[bwDates[0]] : null;
+        const diff = bw && lastBW ? (parseFloat(bw) - parseFloat(lastBW)).toFixed(1) : null;
+        return (
+          <div style={{ background: "#151515", border: "1px solid #222", borderRadius: 12, padding: "12px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Bodyweight today</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={bw}
+                  onChange={e => persist(prev => { const n = JSON.parse(JSON.stringify(prev)); if (!n.bodyweight) n.bodyweight = {}; n.bodyweight[tk] = e.target.value; return n; })}
+                  placeholder={lastBW || "lbs"}
+                  style={{ width: 90, padding: "8px 10px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#E8E8E8", fontSize: 16, fontWeight: 700, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                />
+                <span style={{ fontSize: 13, color: "#555" }}>lb</span>
+                {diff !== null && diff !== "0.0" && (
+                  <span style={{ fontSize: 12, fontWeight: 600, fontFamily: "monospace", color: parseFloat(diff) < 0 ? "#4ade80" : "#f87171" }}>
+                    {parseFloat(diff) > 0 ? "+" : ""}{diff}
+                  </span>
+                )}
+              </div>
+            </div>
+            {lastBW && <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 10, color: "#555" }}>Last</div>
+              <div style={{ fontSize: 14, color: "#888", fontFamily: "monospace", fontWeight: 600 }}>{lastBW}</div>
+            </div>}
+          </div>
+        );
+      })()}
+
+      {/* Day Tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {DAYS.map((d, i) => (
+          <button key={i} onClick={() => { setActiveDay(i); setActiveSet(null); }} style={{
+            flex: 1, padding: "10px 6px", border: activeDay===i ? `2px solid ${d.color}` : "2px solid #222",
+            borderRadius: 10, background: activeDay===i ? `${d.color}18` : "#151515", cursor: "pointer",
+          }}>
+            <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: activeDay===i ? d.color : "#555", fontFamily: "monospace" }}>{d.name}</div>
+            <div style={{ fontSize: 12, color: activeDay===i ? "#CCC" : "#666", marginTop: 2 }}>{d.subtitle}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Progress */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginBottom: 4 }}>
+          <span>{completedSets}/{totalSets} sets</span>
+          {sessionComplete && <span style={{ color: day.color, fontWeight: 700 }}>Session Complete!</span>}
+          {completedSets > 0 && completedSets < totalSets && (
+            <button onClick={clearToday} style={{ background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer", textDecoration: "underline" }}>Reset</button>
+          )}
+        </div>
+        <div style={{ height: 4, borderRadius: 2, background: "#222" }}>
+          <div style={{ height: "100%", width: `${totalSets ? (completedSets/totalSets)*100 : 0}%`, background: day.color, borderRadius: 2, transition: "width 0.3s" }}/>
+        </div>
+      </div>
+
+      {/* Rest Timer */}
+      {restTimer && restLeft > 0 && (
+        <div style={{ background: `${day.color}20`, border: `1px solid ${day.color}50`, borderRadius: 12, padding: "14px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#999" }}>Rest Timer</div>
+            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "monospace", color: day.color }}>{Math.floor(restLeft/60)}:{String(restLeft%60).padStart(2,"0")}</div>
+          </div>
+          <button onClick={() => { setRestTimer(null); setRestLeft(0); }} style={{ background: "#333", border: "none", color: "#CCC", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Skip</button>
+        </div>
+      )}
+
+      {/* Exercises */}
+      {day.exercises.map((ex) => {
+        const exData = session[ex.id] || {};
+        const last = getLast(ex.id);
+        const allDone = Array.from({ length: ex.sets }, (_, i) => exData[i]?.done).every(Boolean);
+        const restSec = parseRest(ex.rest);
+
+        return (
+          <div key={ex.id} style={{ background: allDone ? `${day.color}08` : "#151515", border: `1px solid ${allDone ? `${day.color}30` : "#222"}`, borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
+            <div style={{ padding: "14px 14px 6px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: allDone ? "#888" : "#E8E8E8" }}>{ex.name}</div>
+                <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginTop: 2 }}>{ex.sets} x {ex.reps} · rest {ex.rest}</div>
+              </div>
+              <button onClick={() => setHistoryView(ex.id)} style={{ background: "#222", border: "none", color: "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>History</button>
+            </div>
+
+            {last && (
+              <div style={{ padding: "0 14px 4px", fontSize: 11, color: "#555" }}>
+                Last ({last.date}): {Object.keys(last.data).sort((a,b)=>a-b).map(si => `${last.data[si].weight||"?"}x${last.data[si].reps||"?"}`).join(" / ")}
+              </div>
+            )}
+
+            <div style={{ padding: "8px 14px 14px" }}>
+              {Array.from({ length: ex.sets }, (_, si) => {
+                const sd = exData[si] || {};
+                const isActive = activeSet === `${ex.id}-${si}`;
+                const isDone = sd.done;
+
+                if (isDone && !isActive) {
+                  return (
+                    <div key={si} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: `${day.color}10`, borderRadius: 8, marginBottom: 4 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: 6, background: day.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                      <span style={{ fontSize: 13, color: "#999", fontFamily: "monospace" }}>Set {si+1}: {sd.weight||"--"} lb x {sd.reps||"--"}</span>
+                      <button onClick={() => setActiveSet(`${ex.id}-${si}`)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer" }}>Edit</button>
+                    </div>
+                  );
+                }
+
+                if (!isActive) {
+                  return (
+                    <button key={si} onClick={() => setActiveSet(`${ex.id}-${si}`)} style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "10px", background: "#1A1A1A",
+                      border: "1px solid #2A2A2A", borderRadius: 8, marginBottom: 4, cursor: "pointer", width: "100%", textAlign: "left",
+                    }}>
+                      <div style={{ width: 24, height: 24, borderRadius: 6, border: "2px solid #444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 11, color: "#666", fontWeight: 600 }}>{si+1}</span>
+                      </div>
+                      <span style={{ fontSize: 13, color: "#777" }}>Tap to log set {si+1}</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <div key={si} style={{ padding: 12, background: `${day.color}12`, border: `1px solid ${day.color}40`, borderRadius: 10, marginBottom: 4 }}>
+                    <div style={{ fontSize: 12, color: day.color, fontWeight: 600, marginBottom: 10 }}>Set {si+1}</div>
+                    <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Weight (lb)</label>
+                        <input type="number" inputMode="decimal" value={sd.weight||""} onChange={e => updateSet(ex.id, si, "weight", e.target.value)}
+                          placeholder={last?.data?.[si]?.weight||"0"} autoFocus
+                          style={{ width: "100%", padding: "10px 12px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#E8E8E8", fontSize: 18, fontWeight: 700, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Reps</label>
+                        <input type="number" inputMode="numeric" value={sd.reps||""} onChange={e => updateSet(ex.id, si, "reps", e.target.value)}
+                          placeholder={ex.reps.replace(/[-]/g, "-").split("-")[0]||"0"}
+                          style={{ width: "100%", padding: "10px 12px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#E8E8E8", fontSize: 18, fontWeight: 700, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => markDone(ex.id, si, restSec)} style={{ flex: 1, padding: 12, background: day.color, border: "none", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Done ✓</button>
+                      <button onClick={() => setActiveSet(null)} style={{ padding: "12px 16px", background: "#333", border: "none", borderRadius: 8, color: "#999", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("app")).render(<App />);
+</script>
+</body>
+</html>
