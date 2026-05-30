@@ -1588,9 +1588,10 @@ function App() {
             );
           }
 
-          const slot = swapId
+          const rawSlot = swapId
             ? { ...resolveAlt(primary, swapId), _swapFor: primary, _scope: "global" }
             : { ...primary, _scope: "day" };
+          const slot = applyCustom(rawSlot, customMapForRender);
           return renderCard(slot, { primary });
         });
 
