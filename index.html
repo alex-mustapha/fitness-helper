@@ -23,15 +23,137 @@
   input[type="number"] { -moz-appearance: textfield; }
   input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   button { font-family: inherit; }
-  .email-banner { 
-    background: linear-gradient(135deg, #1a3a1a, #0F0F0F); 
-    border: 1px solid #2a5a2a; 
-    border-radius: 14px; 
-    padding: 18px; 
+  .email-banner {
+    background: linear-gradient(135deg, #1a3a1a, #0F0F0F);
+    border: 1px solid #2a5a2a;
+    border-radius: 14px;
+    padding: 18px;
     margin-bottom: 16px;
     animation: slideDown 0.3s ease;
   }
   @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .chest-overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    background: radial-gradient(circle at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.96) 100%);
+    animation: chestFade 0.3s ease;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+  }
+  @keyframes chestFade { from { opacity: 0; } to { opacity: 1; } }
+
+  .chest-beams {
+    position: absolute;
+    width: 700px; height: 700px;
+    background: conic-gradient(from 0deg,
+      transparent 0deg, rgba(253, 224, 71, 0.35) 4deg, transparent 12deg,
+      transparent 38deg, rgba(253, 224, 71, 0.35) 42deg, transparent 50deg,
+      transparent 76deg, rgba(253, 224, 71, 0.35) 80deg, transparent 88deg,
+      transparent 114deg, rgba(253, 224, 71, 0.35) 118deg, transparent 126deg,
+      transparent 152deg, rgba(253, 224, 71, 0.35) 156deg, transparent 164deg,
+      transparent 190deg, rgba(253, 224, 71, 0.35) 194deg, transparent 202deg,
+      transparent 228deg, rgba(253, 224, 71, 0.35) 232deg, transparent 240deg,
+      transparent 266deg, rgba(253, 224, 71, 0.35) 270deg, transparent 278deg,
+      transparent 304deg, rgba(253, 224, 71, 0.35) 308deg, transparent 316deg,
+      transparent 342deg, rgba(253, 224, 71, 0.35) 346deg, transparent 354deg);
+    filter: blur(2px);
+    animation: chestSpin 10s linear infinite, chestBeamFade 0.7s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes chestSpin { to { transform: rotate(360deg); } }
+  @keyframes chestBeamFade { from { opacity: 0; transform: scale(0.4) rotate(0deg); } to { opacity: 1; transform: scale(1) rotate(180deg); } }
+
+  .chest-flash {
+    position: absolute;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(255, 251, 230, 0.95) 0%, rgba(253, 224, 71, 0.6) 25%, rgba(251, 191, 36, 0.25) 55%, transparent 100%);
+    border-radius: 50%;
+    animation: chestFlash 1.8s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes chestFlash {
+    0% { transform: scale(0); opacity: 0; }
+    8% { transform: scale(1.6); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.75; }
+    100% { transform: scale(1); opacity: 0.45; }
+  }
+
+  .chest-particle {
+    position: absolute;
+    background: #fde047;
+    box-shadow: 0 0 8px #fde047, 0 0 16px #fbbf24;
+    border-radius: 50%;
+    animation: chestParticle 1.8s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes chestParticle {
+    0% { transform: translate(0, 0) scale(0); opacity: 0; }
+    15% { transform: translate(calc(var(--tx) * 0.25), calc(var(--ty) * 0.25)) scale(1.2); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0.4); opacity: 0; }
+  }
+
+  .chest-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    pointer-events: none;
+    padding: 0 24px;
+  }
+
+  .chest-title {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: 6px;
+    color: #fde047;
+    text-shadow: 0 0 20px rgba(253, 224, 71, 0.9), 0 0 40px rgba(253, 224, 71, 0.5), 0 2px 0 rgba(0,0,0,0.5);
+    margin-bottom: 18px;
+    opacity: 0;
+    animation: chestTitleIn 0.55s 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes chestTitleIn {
+    0% { transform: translateY(30px) scale(0.5); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .chest-stat {
+    font-family: monospace;
+    font-size: 14px;
+    color: #fff;
+    letter-spacing: 2px;
+    margin: 8px 0;
+    opacity: 0;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+    animation: chestStatIn 0.45s ease-out forwards;
+  }
+  .chest-stat-value {
+    color: #fde047;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+  @keyframes chestStatIn {
+    from { transform: translateY(16px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .chest-hint {
+    position: absolute;
+    bottom: 40px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #888;
+    letter-spacing: 3px;
+    font-family: monospace;
+    text-transform: uppercase;
+    animation: chestHintPulse 1.6s 1.2s ease-in-out infinite;
+    opacity: 0;
+  }
+  @keyframes chestHintPulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.7; }
+  }
 </style>
 </head>
 <body>
@@ -317,6 +439,8 @@ function App() {
   const [saveStatus, setSaveStatus] = useState({});
   const [syncStatus, setSyncStatus] = useState(null);
   const [overviewView, setOverviewView] = useState(false);
+  const [chestOpen, setChestOpen] = useState(false);
+  const prevCompleteRef = useRef({});
   const prevCompleted = useRef(0);
   const autoSavedRef = useRef({});
 
@@ -372,13 +496,22 @@ function App() {
   const ended = !!session._ended;
   const sessionComplete = (completedSets === totalSets && totalSets > 0) || ended;
 
-  // Detect session completion -> show banner + auto-save once
+  // Detect transition from incomplete -> complete (per session key)
   useEffect(() => {
-    if (sessionComplete && prevCompleted.current < totalSets && !emailSent[sk]) {
+    const wasComplete = prevCompleteRef.current[sk];
+    if (sessionComplete && wasComplete === false && !emailSent[sk]) {
       setShowEmailBanner(true);
+      setChestOpen(true);
     }
-    prevCompleted.current = completedSets;
-  }, [completedSets, sessionComplete]);
+    prevCompleteRef.current[sk] = sessionComplete;
+  }, [sk, sessionComplete, emailSent]);
+
+  // Auto-close chest after a few seconds
+  useEffect(() => {
+    if (!chestOpen) return;
+    const t = setTimeout(() => setChestOpen(false), 6000);
+    return () => clearTimeout(t);
+  }, [chestOpen]);
 
   useEffect(() => {
     if (!sessionComplete || autoSavedRef.current[sk] || Object.keys(session).length === 0) return;
@@ -1256,8 +1389,69 @@ function App() {
     );
   }
 
+  // Chest overlay (Vampire-Survivors-style burst on session completion)
+  const renderChest = () => {
+    if (!chestOpen) return null;
+    let vol = 0, doneSets = 0;
+    for (const slot of renderSlots) {
+      const exData = session[slot.id];
+      if (!exData) continue;
+      for (const k of Object.keys(exData)) {
+        if (!/^\d+$/.test(k)) continue;
+        const sd = exData[k];
+        if (!sd?.done) continue;
+        doneSets++;
+        const w = parseFloat(sd.weight) || 0;
+        const r = parseInt(sd.reps) || 0;
+        vol += w * r;
+      }
+    }
+    const particles = Array.from({ length: 36 }, (_, i) => {
+      const angle = (i / 36) * Math.PI * 2 + Math.random() * 0.25;
+      const dist = 180 + Math.random() * 180;
+      const size = 4 + Math.random() * 9;
+      return {
+        tx: Math.cos(angle) * dist,
+        ty: Math.sin(angle) * dist,
+        size,
+        delay: Math.random() * 0.35,
+        duration: 1.4 + Math.random() * 0.8,
+      };
+    });
+    return (
+      <div className="chest-overlay" onClick={() => setChestOpen(false)}>
+        <div className="chest-beams" />
+        <div className="chest-flash" />
+        {particles.map((p, i) => (
+          <div key={i} className="chest-particle" style={{
+            "--tx": `${p.tx}px`,
+            "--ty": `${p.ty}px`,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+          }} />
+        ))}
+        <div className="chest-content">
+          <div className="chest-title">COMPLETE!</div>
+          <div className="chest-stat" style={{ animationDelay: "0.75s" }}>
+            SETS<span className="chest-stat-value">{doneSets}</span>
+          </div>
+          <div className="chest-stat" style={{ animationDelay: "0.95s" }}>
+            VOLUME<span className="chest-stat-value">{Math.round(vol).toLocaleString()} lb</span>
+          </div>
+          <div className="chest-stat" style={{ animationDelay: "1.15s" }}>
+            {day.name.toUpperCase()}<span className="chest-stat-value">{day.subtitle}</span>
+          </div>
+        </div>
+        <div className="chest-hint">tap to continue</div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 120px" }}>
+      {renderChest()}
       {/* Header */}
       <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
@@ -1621,7 +1815,36 @@ function App() {
           </button>
         );
 
-        return [...primaryCards, ...accessoryCards, accessoryPicker];
+        const coreHeader = primaryCards.length > 0 ? (
+          <div key="core-header" style={{
+            display: "flex", alignItems: "center", gap: 10, marginTop: 2, marginBottom: 10,
+          }}>
+            <span style={{ fontSize: 10, color: day.color, letterSpacing: 2.5, fontFamily: "monospace", fontWeight: 700, textTransform: "uppercase" }}>Core Workout</span>
+            <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, ${day.color}55, transparent)` }} />
+          </div>
+        ) : null;
+        const accessoryHeader = accessoryCards.length > 0 ? (
+          <div key="acc-header" style={{
+            display: "flex", alignItems: "center", gap: 10, marginTop: 22, marginBottom: 10,
+            paddingTop: 14, borderTop: "1px solid #1F1F1F",
+          }}>
+            <span style={{ fontSize: 10, color: "#888", letterSpacing: 2.5, fontFamily: "monospace", fontWeight: 700, textTransform: "uppercase" }}>Accessories</span>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, #333, transparent)" }} />
+          </div>
+        ) : null;
+        const accessoryPickerWrap = accessoryCards.length > 0 ? accessoryPicker : (
+          <div key="acc-wrap">
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10, marginTop: 22, marginBottom: 10,
+              paddingTop: 14, borderTop: "1px solid #1F1F1F",
+            }}>
+              <span style={{ fontSize: 10, color: "#555", letterSpacing: 2.5, fontFamily: "monospace", fontWeight: 700, textTransform: "uppercase" }}>Accessories</span>
+              <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, #333, transparent)" }} />
+            </div>
+            {accessoryPicker}
+          </div>
+        );
+        return [coreHeader, ...primaryCards, accessoryHeader, ...accessoryCards, accessoryPickerWrap].filter(Boolean);
       })()}
     </div>
   );
