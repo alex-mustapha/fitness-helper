@@ -239,6 +239,7 @@ function buildWorkoutEmail(day, session, log, tk) {
   const omitted = session._omitted || {};
   const swapped = session._swapped || {};
   const accessoryIds = session._accessories || [];
+  const ended = !!session._ended;
 
   const omittedExercises = day.exercises.filter(ex => omitted[ex.id] && !swapped[ex.id]);
   const includedSlots = day.exercises.map(p => {
@@ -269,7 +270,7 @@ function buildWorkoutEmail(day, session, log, tk) {
       const sd = exData[i];
       if (sd && sd.done) {
         setLines.push("  Set " + (i+1) + ": " + (sd.weight || "BW") + " lb x " + (sd.reps || "?") + " reps");
-      } else {
+      } else if (!ended) {
         setLines.push("  Set " + (i+1) + ": skipped");
       }
     }
@@ -403,7 +404,8 @@ function App() {
 
   const totalSets = renderSlots.reduce((a, e) => a + e.sets, 0);
   const completedSets = renderSlots.reduce((a, ex) => a + Object.values(session[ex.id] || {}).filter(s => s.done).length, 0);
-  const sessionComplete = completedSets === totalSets && totalSets > 0;
+  const ended = !!session._ended;
+  const sessionComplete = (completedSets === totalSets && totalSets > 0) || ended;
 
   // Detect session completion
   useEffect(() => {
@@ -539,7 +541,64 @@ function App() {
       .sort().reverse().slice(0, 10)
       .map(k => ({ date: k.slice(0,10), data: log.sessions[k][exId] }));
 
-  const clearToday = () => { persist(prev => { const n = JSON.parse(JSON.stringify(prev)); delete n.sessions[sk]; return n; }); setShowEmailBanner(false); };
+  const clearToday = () => {
+    if (!confirm(`Clear today's logged sets for ${day.name}?`)) return;
+    persist(prev => { const n = JSON.parse(JSON.stringify(prev)); delete n.sessions[sk]; return n; });
+    setShowEmailBanner(false);
+    setEmailSent(prev => { const n = { ...prev }; delete n[sk]; return n; });
+    setActiveSet(null);
+    setRestTimer(null); setRestLeft(0);
+  };
+
+  const clearAllData = () => {
+    if (!confirm("Delete ALL workout history and bodyweight data from this device? This cannot be undone.")) return;
+    if (!confirm("Are you absolutely sure? Everything will be erased.")) return;
+    localStorage.removeItem(SK);
+    setLog({ sessions: {}, bodyweight: {} });
+    setShowEmailBanner(false);
+    setEmailSent({});
+    setActiveSet(null);
+    setRestTimer(null); setRestLeft(0);
+    setHistoryView(null);
+  };
+
+  const endWorkout = () => {
+    const primariesToOmit = [];
+    const accessoriesToRemove = [];
+    for (const primary of day.exercises) {
+      if (isOmitted(primary.id)) continue;
+      const swapId = getSwap(primary.id);
+      const slotId = swapId || primary.id;
+      const doneCount = Object.values(session[slotId] || {}).filter(s => s.done).length;
+      if (doneCount === 0) primariesToOmit.push(primary.id);
+    }
+    for (const accId of accessoryIds) {
+      const doneCount = Object.values(session[accId] || {}).filter(s => s.done).length;
+      if (doneCount === 0) accessoriesToRemove.push(accId);
+    }
+    const dropCount = primariesToOmit.length + accessoriesToRemove.length;
+    const msg = dropCount > 0
+      ? `End workout? ${dropCount} exercise${dropCount > 1 ? "s" : ""} with no logged sets will be dropped from the report. Partial sets will be kept.`
+      : "End workout? Any unfinished sets will be skipped in the report.";
+    if (!confirm(msg)) return;
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk]._omitted) n.sessions[sk]._omitted = {};
+      for (const id of primariesToOmit) {
+        n.sessions[sk]._omitted[id] = true;
+        if (n.sessions[sk]._swapped) delete n.sessions[sk]._swapped[id];
+      }
+      if (n.sessions[sk]._accessories) {
+        n.sessions[sk]._accessories = n.sessions[sk]._accessories.filter(id => !accessoriesToRemove.includes(id));
+      }
+      n.sessions[sk]._ended = true;
+      return n;
+    });
+    setActiveSet(null);
+    setRestTimer(null); setRestLeft(0);
+    setShowEmailBanner(true);
+  };
 
   const exportData = () => {
     const blob = new Blob([JSON.stringify(log, null, 2)], { type: "application/json" });
@@ -547,6 +606,8 @@ function App() {
     const a = document.createElement("a"); a.href = url; a.download = `workout-log-${tk}.json`; a.click();
     URL.revokeObjectURL(url);
   };
+
+  const sessionHasData = Object.keys(session).length > 0;
 
   // History view
   if (historyView) {
@@ -599,6 +660,7 @@ function App() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={exportData} style={{ background: "#1A1A1A", border: "1px solid #333", color: "#888", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Export</button>
+          <button onClick={clearAllData} title="Clear all data" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
         </div>
       </div>
 
@@ -677,12 +739,16 @@ function App() {
 
       {/* Progress */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginBottom: 4 }}>
-          <span>{completedSets}/{totalSets} sets</span>
-          {sessionComplete && <span style={{ color: day.color, fontWeight: 700 }}>Session Complete!</span>}
-          {completedSets > 0 && completedSets < totalSets && (
-            <button onClick={clearToday} style={{ background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer", textDecoration: "underline" }}>Reset</button>
-          )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#666", marginBottom: 4 }}>
+          <span>{completedSets}/{totalSets} sets{ended ? " · ended" : (sessionComplete && totalSets > 0 ? " · complete" : "")}</span>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            {sessionHasData && !sessionComplete && (
+              <button onClick={endWorkout} style={{ background: "none", border: "none", color: day.color, fontSize: 11, cursor: "pointer", textDecoration: "underline", fontWeight: 600 }}>End workout</button>
+            )}
+            {sessionHasData && (
+              <button onClick={clearToday} style={{ background: "none", border: "none", color: "#888", fontSize: 11, cursor: "pointer", textDecoration: "underline" }}>Reset day</button>
+            )}
+          </div>
         </div>
         <div style={{ height: 4, borderRadius: 2, background: "#222" }}>
           <div style={{ height: "100%", width: `${totalSets ? (completedSets/totalSets)*100 : 0}%`, background: day.color, borderRadius: 2, transition: "width 0.3s" }}/>
