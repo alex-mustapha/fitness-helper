@@ -46,37 +46,176 @@ const DAYS = [
   {
     id: "a", name: "Day A", subtitle: "Squat Focus", color: "#E63946",
     exercises: [
-      { id: "a1", name: "Barbell Back Squat", sets: 4, reps: "5", rest: "3 min" },
-      { id: "a2", name: "Barbell Bench Press", sets: 4, reps: "6-8", rest: "2-3 min" },
-      { id: "a3", name: "Barbell Row", sets: 3, reps: "8-10", rest: "2 min" },
-      { id: "a4", name: "DB Romanian Deadlift", sets: 3, reps: "10-12", rest: "90 sec" },
-      { id: "a5", name: "Cable Face Pull", sets: 3, reps: "15-20", rest: "60 sec" },
-      { id: "a6", name: "Plank Hold", sets: 3, reps: "30-45s", rest: "60 sec" },
+      { id: "a1", name: "Barbell Back Squat", sets: 4, reps: "5", rest: "3 min",
+        alts: [
+          { id: "front-squat", name: "Front Squat" },
+          { id: "hack-squat", name: "Hack Squat", reps: "5-8" },
+          { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", reps: "8-10/leg", rest: "90 sec" },
+          { id: "heavy-leg-press", name: "Heavy Leg Press", reps: "6-8" },
+        ] },
+      { id: "a2", name: "Barbell Bench Press", sets: 4, reps: "6-8", rest: "2-3 min",
+        alts: [
+          { id: "db-bench", name: "DB Bench Press", reps: "8-10" },
+          { id: "floor-press", name: "Floor Press" },
+          { id: "machine-chest-press", name: "Machine Chest Press", reps: "8-10" },
+          { id: "weighted-pushup", name: "Weighted Push-up", reps: "8-12" },
+        ] },
+      { id: "a3", name: "Barbell Row", sets: 3, reps: "8-10", rest: "2 min",
+        alts: [
+          { id: "db-row", name: "DB Row", reps: "10-12" },
+          { id: "chest-supported-row", name: "Chest-Supported Row" },
+          { id: "t-bar-row", name: "T-Bar Row" },
+          { id: "pendlay-row", name: "Pendlay Row", reps: "5-8" },
+        ] },
+      { id: "a4", name: "DB Romanian Deadlift", sets: 3, reps: "10-12", rest: "90 sec",
+        alts: [
+          { id: "bb-rdl", name: "Barbell RDL", reps: "8-10" },
+          { id: "hip-thrust", name: "Hip Thrust", reps: "8-10" },
+          { id: "single-leg-rdl", name: "Single-leg RDL", reps: "10/leg" },
+          { id: "good-morning", name: "Good Morning", reps: "10-12" },
+        ] },
+      { id: "a5", name: "Cable Face Pull", sets: 3, reps: "15-20", rest: "60 sec",
+        alts: [
+          { id: "reverse-pec-deck", name: "Reverse Pec Deck" },
+          { id: "band-pull-apart", name: "Band Pull-Apart", reps: "20-25" },
+          { id: "rear-delt-fly", name: "Rear Delt Fly", reps: "12-15" },
+        ] },
+      { id: "a6", name: "Plank Hold", sets: 3, reps: "30-45s", rest: "60 sec",
+        alts: [
+          { id: "side-plank", name: "Side Plank", reps: "30s/side" },
+          { id: "dead-bug", name: "Dead Bug", reps: "10/side" },
+          { id: "pallof-press", name: "Pallof Press", reps: "10/side" },
+          { id: "ab-wheel", name: "Ab Wheel Rollout", reps: "8-12" },
+        ] },
     ],
   },
   {
     id: "b", name: "Day B", subtitle: "Press Focus", color: "#457B9D",
     exercises: [
-      { id: "b1", name: "Barbell OHP", sets: 4, reps: "5-6", rest: "3 min" },
-      { id: "b2", name: "Deadlift (Trap/Conv)", sets: 3, reps: "5", rest: "3 min" },
-      { id: "b3", name: "Incline DB Press", sets: 3, reps: "8-10", rest: "2 min" },
-      { id: "b4", name: "Lat Pulldown", sets: 3, reps: "10-12", rest: "90 sec" },
-      { id: "b5", name: "Leg Press", sets: 3, reps: "10-12", rest: "2 min" },
-      { id: "b6", name: "Curl + Pushdown SS", sets: 3, reps: "12 ea", rest: "60 sec" },
+      { id: "b1", name: "Barbell OHP", sets: 4, reps: "5-6", rest: "3 min",
+        alts: [
+          { id: "seated-db-press", name: "Seated DB Press", reps: "6-8" },
+          { id: "landmine-press", name: "Landmine Press", reps: "8-10" },
+          { id: "machine-shoulder-press", name: "Machine Shoulder Press", reps: "8-10" },
+          { id: "push-press", name: "Push Press", reps: "3-5" },
+        ] },
+      { id: "b2", name: "Deadlift (Trap/Conv)", sets: 3, reps: "5", rest: "3 min",
+        alts: [
+          { id: "trap-bar-dl", name: "Trap Bar Deadlift" },
+          { id: "rack-pull", name: "Rack Pull", reps: "5-6" },
+          { id: "bb-rdl", name: "Barbell RDL", reps: "8-10", rest: "2 min" },
+        ] },
+      { id: "b3", name: "Incline DB Press", sets: 3, reps: "8-10", rest: "2 min",
+        alts: [
+          { id: "incline-bb", name: "Incline BB Press" },
+          { id: "incline-machine", name: "Incline Machine Press" },
+          { id: "low-incline-db", name: "Low-Incline DB Press" },
+        ] },
+      { id: "b4", name: "Lat Pulldown", sets: 3, reps: "10-12", rest: "90 sec",
+        alts: [
+          { id: "pull-up", name: "Pull-up", reps: "AMRAP" },
+          { id: "chin-up", name: "Chin-up", reps: "AMRAP" },
+          { id: "neutral-pulldown", name: "Neutral-grip Pulldown" },
+          { id: "inverted-row", name: "Inverted Row", reps: "8-12" },
+        ] },
+      { id: "b5", name: "Leg Press", sets: 3, reps: "10-12", rest: "2 min",
+        alts: [
+          { id: "hack-squat", name: "Hack Squat", reps: "8-10" },
+          { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", reps: "8-10/leg" },
+          { id: "goblet-squat", name: "Goblet Squat", reps: "10-12" },
+          { id: "step-up", name: "Step-up", reps: "10/leg" },
+        ] },
+      { id: "b6", name: "Curl + Pushdown SS", sets: 3, reps: "12 ea", rest: "60 sec",
+        alts: [
+          { id: "hammer-skull-ss", name: "Hammer Curl + Skull Crusher", reps: "10 ea" },
+          { id: "ez-curl-overhead-tri", name: "EZ Curl + Overhead Triceps", reps: "10 ea" },
+          { id: "preacher-dip", name: "Preacher Curl + Dip", reps: "10 ea" },
+        ] },
     ],
   },
   {
     id: "c", name: "Day C", subtitle: "Deadlift Focus", color: "#2A9D8F",
     exercises: [
-      { id: "c1", name: "Barbell Deadlift", sets: 4, reps: "3-5", rest: "3-4 min" },
-      { id: "c2", name: "Front/Goblet Squat", sets: 3, reps: "8-10", rest: "2 min" },
-      { id: "c3", name: "DB Bench Press", sets: 3, reps: "10-12", rest: "90 sec" },
-      { id: "c4", name: "Cable Row", sets: 3, reps: "10-12", rest: "90 sec" },
-      { id: "c5", name: "Walking Lunges", sets: 3, reps: "10/leg", rest: "90 sec" },
-      { id: "c6", name: "Hanging Leg Raise", sets: 3, reps: "10-15", rest: "60 sec" },
+      { id: "c1", name: "Barbell Deadlift", sets: 4, reps: "3-5", rest: "3-4 min",
+        alts: [
+          { id: "trap-bar-dl", name: "Trap Bar Deadlift" },
+          { id: "rack-pull", name: "Rack Pull", reps: "5-6" },
+          { id: "block-pull", name: "Block Pull", reps: "3-5" },
+          { id: "stiff-leg-dl", name: "Stiff-leg Deadlift", reps: "6-8", rest: "2-3 min" },
+        ] },
+      { id: "c2", name: "Front/Goblet Squat", sets: 3, reps: "8-10", rest: "2 min",
+        alts: [
+          { id: "heels-elevated-squat", name: "Heels-elevated Squat" },
+          { id: "hack-squat", name: "Hack Squat" },
+          { id: "db-squat", name: "DB Squat" },
+        ] },
+      { id: "c3", name: "DB Bench Press", sets: 3, reps: "10-12", rest: "90 sec",
+        alts: [
+          { id: "bb-bench", name: "Barbell Bench Press", reps: "6-8", rest: "2 min" },
+          { id: "machine-chest-press", name: "Machine Chest Press" },
+          { id: "dip", name: "Dip", reps: "8-12" },
+          { id: "floor-press", name: "Floor Press" },
+        ] },
+      { id: "c4", name: "Cable Row", sets: 3, reps: "10-12", rest: "90 sec",
+        alts: [
+          { id: "chest-supported-row", name: "Chest-Supported Row" },
+          { id: "db-row", name: "DB Row" },
+          { id: "seal-row", name: "Seal Row" },
+          { id: "inverted-row", name: "Inverted Row", reps: "10-15" },
+        ] },
+      { id: "c5", name: "Walking Lunges", sets: 3, reps: "10/leg", rest: "90 sec",
+        alts: [
+          { id: "reverse-lunge", name: "Reverse Lunge", reps: "10/leg" },
+          { id: "step-up", name: "Step-up", reps: "10/leg" },
+          { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", reps: "8-10/leg" },
+          { id: "lateral-lunge", name: "Lateral Lunge", reps: "10/leg" },
+        ] },
+      { id: "c6", name: "Hanging Leg Raise", sets: 3, reps: "10-15", rest: "60 sec",
+        alts: [
+          { id: "cable-crunch", name: "Cable Crunch", reps: "12-15" },
+          { id: "decline-situp", name: "Decline Sit-up", reps: "10-15" },
+          { id: "ab-wheel", name: "Ab Wheel Rollout", reps: "8-12" },
+          { id: "v-up", name: "V-up", reps: "10-15" },
+        ] },
     ],
   },
 ];
+
+const ACCESSORIES = {
+  a: [
+    { id: "pull-up", name: "Pull-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
+    { id: "chin-up", name: "Chin-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
+    { id: "hip-thrust", name: "Hip Thrust", sets: 3, reps: "8-10", rest: "90 sec" },
+    { id: "calf-raise", name: "Standing Calf Raise", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "ab-wheel", name: "Ab Wheel Rollout", sets: 3, reps: "8-12", rest: "60 sec" },
+  ],
+  b: [
+    { id: "calf-raise", name: "Standing Calf Raise", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "hip-thrust", name: "Hip Thrust", sets: 3, reps: "8-10", rest: "90 sec" },
+    { id: "lateral-raise", name: "DB Lateral Raise", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "rear-delt-fly", name: "Rear Delt Fly", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "pull-up", name: "Pull-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
+  ],
+  c: [
+    { id: "pull-up", name: "Pull-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
+    { id: "chin-up", name: "Chin-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
+    { id: "calf-raise", name: "Standing Calf Raise", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "hammer-curl", name: "Hammer Curl", sets: 3, reps: "10-12", rest: "60 sec" },
+    { id: "rear-delt-fly", name: "Rear Delt Fly", sets: 3, reps: "12-15", rest: "60 sec" },
+  ],
+};
+
+const resolveAlt = (primary, altId) => {
+  const alt = primary.alts?.find(a => a.id === altId);
+  if (!alt) return null;
+  return {
+    id: alt.id,
+    name: alt.name,
+    sets: alt.sets ?? primary.sets,
+    reps: alt.reps ?? primary.reps,
+    rest: alt.rest ?? primary.rest,
+  };
+};
 
 const SK = "workout-log-v1";
 const USER_EMAIL = "kalinowski89@gmail.com";
@@ -98,12 +237,31 @@ function buildWorkoutEmail(day, session, log, tk) {
   lines.push("");
 
   const omitted = session._omitted || {};
-  const includedExercises = day.exercises.filter(ex => !omitted[ex.id]);
-  const omittedExercises = day.exercises.filter(ex => omitted[ex.id]);
+  const swapped = session._swapped || {};
+  const accessoryIds = session._accessories || [];
 
-  includedExercises.forEach((ex) => {
+  const omittedExercises = day.exercises.filter(ex => omitted[ex.id] && !swapped[ex.id]);
+  const includedSlots = day.exercises.map(p => {
+    if (omitted[p.id]) return null;
+    if (swapped[p.id]) {
+      const alt = resolveAlt(p, swapped[p.id]);
+      if (alt) return { ...alt, _swapFor: p.name, _scope: "global" };
+      return { ...p, _scope: "day" };
+    }
+    return { ...p, _scope: "day" };
+  }).filter(Boolean);
+
+  const accessorySlots = accessoryIds
+    .map(id => (ACCESSORIES[day.id] || []).find(a => a.id === id))
+    .filter(Boolean)
+    .map(a => ({ ...a, _accessory: true, _scope: "global" }));
+
+  const allSlots = [...includedSlots, ...accessorySlots];
+
+  allSlots.forEach((ex) => {
     const exData = session[ex.id] || {};
-    lines.push(ex.name + " (Target: " + ex.sets + " x " + ex.reps + ")");
+    const label = ex._swapFor ? `${ex.name} (in place of ${ex._swapFor})` : (ex._accessory ? `${ex.name} (accessory)` : ex.name);
+    lines.push(label + " (Target: " + ex.sets + " x " + ex.reps + ")");
 
     // Current session sets
     const setLines = [];
@@ -117,17 +275,20 @@ function buildWorkoutEmail(day, session, log, tk) {
     }
     lines.push(...setLines);
 
-    // Previous session comparison
+    // Previous session comparison: day-scoped for primaries, global for alts/accessories
     const prevKeys = Object.keys(log.sessions)
-      .filter(k => k !== `${tk}-${day.id}` && k.endsWith(`-${day.id}`))
+      .filter(k => k !== `${tk}-${day.id}`)
+      .filter(k => ex._scope === "day" ? k.endsWith(`-${day.id}`) : true)
       .sort().reverse();
     for (const k of prevKeys) {
       if (log.sessions[k]?.[ex.id]) {
         const prev = log.sessions[k][ex.id];
-        const prevSets = Object.keys(prev).sort((a,b)=>a-b)
+        const prevSets = Object.keys(prev).filter(s => /^\d+$/.test(s)).sort((a,b)=>a-b)
           .map(si => (prev[si].weight||"?") + "x" + (prev[si].reps||"?")).join(", ");
-        lines.push("  Previous (" + k.slice(0,10) + "): " + prevSets);
-        break;
+        if (prevSets) {
+          lines.push("  Previous (" + k.slice(0,10) + "): " + prevSets);
+          break;
+        }
       }
     }
     lines.push("");
@@ -138,7 +299,7 @@ function buildWorkoutEmail(day, session, log, tk) {
   let totalWeight = 0;
   let totalReps = 0;
   let totalSetsCompleted = 0;
-  includedExercises.forEach(ex => {
+  allSlots.forEach(ex => {
     const exData = session[ex.id] || {};
     for (let i = 0; i < ex.sets; i++) {
       const sd = exData[i];
@@ -151,7 +312,7 @@ function buildWorkoutEmail(day, session, log, tk) {
       }
     }
   });
-  lines.push("Sets completed: " + totalSetsCompleted + "/" + includedExercises.reduce((a,e) => a + e.sets, 0));
+  lines.push("Sets completed: " + totalSetsCompleted + "/" + allSlots.reduce((a,e) => a + e.sets, 0));
   lines.push("Total reps: " + totalReps);
   lines.push("Total volume: " + totalWeight.toLocaleString() + " lb");
   if (omittedExercises.length > 0) {
@@ -193,6 +354,8 @@ function App() {
   const [restLeft, setRestLeft] = useState(0);
   const [showEmailBanner, setShowEmailBanner] = useState(false);
   const [emailSent, setEmailSent] = useState({});
+  const [swapPickerFor, setSwapPickerFor] = useState(null);
+  const [showAccessoryPicker, setShowAccessoryPicker] = useState(false);
   const prevCompleted = useRef(0);
 
   const persist = useCallback((fn) => {
@@ -215,11 +378,31 @@ function App() {
   const sk = `${tk}-${day.id}`;
   const session = log.sessions[sk] || {};
   const omitted = session._omitted || {};
+  const swapped = session._swapped || {};
+  const accessoryIds = session._accessories || [];
   const isOmitted = (exId) => !!omitted[exId];
+  const getSwap = (exId) => swapped[exId] || null;
 
-  const includedExercises = day.exercises.filter(ex => !isOmitted(ex.id));
-  const totalSets = includedExercises.reduce((a, e) => a + e.sets, 0);
-  const completedSets = includedExercises.reduce((a, ex) => a + Object.values(session[ex.id] || {}).filter(s => s.done).length, 0);
+  const resolveSlot = (primary) => {
+    const swapId = getSwap(primary.id);
+    if (swapId) {
+      const alt = resolveAlt(primary, swapId);
+      if (alt) return { ...alt, _swapFor: primary, _scope: "day" };
+    }
+    return { ...primary, _scope: "day" };
+  };
+
+  const includedSlots = day.exercises
+    .filter(ex => !isOmitted(ex.id))
+    .map(resolveSlot);
+  const accessorySlots = accessoryIds
+    .map(id => (ACCESSORIES[day.id] || []).find(a => a.id === id))
+    .filter(Boolean)
+    .map(a => ({ ...a, _accessory: true, _scope: "global" }));
+  const renderSlots = [...includedSlots, ...accessorySlots];
+
+  const totalSets = renderSlots.reduce((a, e) => a + e.sets, 0);
+  const completedSets = renderSlots.reduce((a, ex) => a + Object.values(session[ex.id] || {}).filter(s => s.done).length, 0);
   const sessionComplete = completedSets === totalSets && totalSets > 0;
 
   // Detect session completion
@@ -282,22 +465,79 @@ function App() {
       const n = JSON.parse(JSON.stringify(prev));
       if (!n.sessions[sk]) n.sessions[sk] = {};
       if (!n.sessions[sk]._omitted) n.sessions[sk]._omitted = {};
-      if (n.sessions[sk]._omitted[exId]) delete n.sessions[sk]._omitted[exId];
-      else n.sessions[sk]._omitted[exId] = true;
+      if (n.sessions[sk]._omitted[exId]) {
+        delete n.sessions[sk]._omitted[exId];
+      } else {
+        n.sessions[sk]._omitted[exId] = true;
+        if (n.sessions[sk]._swapped) delete n.sessions[sk]._swapped[exId];
+      }
       return n;
     });
     if (activeSet?.startsWith(`${exId}-`)) setActiveSet(null);
   };
 
-  const getLast = (exId) => {
-    const keys = Object.keys(log.sessions).filter(k => k !== sk && k.endsWith(`-${day.id}`)).sort().reverse();
-    for (const k of keys) { if (log.sessions[k]?.[exId]) return { date: k.slice(0,10), data: log.sessions[k][exId] }; }
+  const setSwap = (primaryId, altId) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk]._swapped) n.sessions[sk]._swapped = {};
+      n.sessions[sk]._swapped[primaryId] = altId;
+      if (n.sessions[sk]._omitted) delete n.sessions[sk]._omitted[primaryId];
+      return n;
+    });
+    setActiveSet(null);
+  };
+
+  const clearSwap = (primaryId) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (n.sessions[sk]?._swapped) delete n.sessions[sk]._swapped[primaryId];
+      return n;
+    });
+    setActiveSet(null);
+  };
+
+  const addAccessory = (accId) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk]._accessories) n.sessions[sk]._accessories = [];
+      if (!n.sessions[sk]._accessories.includes(accId)) n.sessions[sk]._accessories.push(accId);
+      return n;
+    });
+  };
+
+  const removeAccessory = (accId) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (n.sessions[sk]?._accessories) {
+        n.sessions[sk]._accessories = n.sessions[sk]._accessories.filter(id => id !== accId);
+      }
+      return n;
+    });
+    if (activeSet?.startsWith(`${accId}-`)) setActiveSet(null);
+  };
+
+  const getLast = (exId, scope = "day") => {
+    const keys = Object.keys(log.sessions)
+      .filter(k => k !== sk)
+      .filter(k => scope === "day" ? k.endsWith(`-${day.id}`) : true)
+      .sort().reverse();
+    for (const k of keys) {
+      const data = log.sessions[k]?.[exId];
+      if (data && Object.keys(data).some(s => /^\d+$/.test(s))) {
+        return { date: k.slice(0,10), data };
+      }
+    }
     return null;
   };
 
-  const getHistory = (exId) =>
-    Object.keys(log.sessions).filter(k => k.endsWith(`-${day.id}`) && log.sessions[k]?.[exId])
-      .sort().reverse().slice(0, 10).map(k => ({ date: k.slice(0,10), data: log.sessions[k][exId] }));
+  const getHistory = (exId, scope = "day") =>
+    Object.keys(log.sessions)
+      .filter(k => scope === "day" ? k.endsWith(`-${day.id}`) : true)
+      .filter(k => log.sessions[k]?.[exId] && Object.keys(log.sessions[k][exId]).some(s => /^\d+$/.test(s)))
+      .sort().reverse().slice(0, 10)
+      .map(k => ({ date: k.slice(0,10), data: log.sessions[k][exId] }));
 
   const clearToday = () => { persist(prev => { const n = JSON.parse(JSON.stringify(prev)); delete n.sessions[sk]; return n; }); setShowEmailBanner(false); };
 
@@ -310,8 +550,19 @@ function App() {
 
   // History view
   if (historyView) {
-    const ex = day.exercises.find(e => e.id === historyView);
-    const hist = getHistory(historyView);
+    let ex = day.exercises.find(e => e.id === historyView);
+    let scope = "day";
+    if (!ex) {
+      for (const p of day.exercises) {
+        const alt = p.alts?.find(a => a.id === historyView);
+        if (alt) { ex = resolveAlt(p, historyView); scope = "global"; break; }
+      }
+    }
+    if (!ex) {
+      const acc = (ACCESSORIES[day.id] || []).find(a => a.id === historyView);
+      if (acc) { ex = acc; scope = "global"; }
+    }
+    const hist = getHistory(historyView, scope);
     return (
       <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
         <button onClick={() => setHistoryView(null)} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer", padding: "8px 0" }}>← Back</button>
@@ -450,106 +701,207 @@ function App() {
       )}
 
       {/* Exercises */}
-      {day.exercises.map((ex) => {
-        const exData = session[ex.id] || {};
-        const last = getLast(ex.id);
-        const allDone = Array.from({ length: ex.sets }, (_, i) => exData[i]?.done).every(Boolean);
-        const restSec = parseRest(ex.rest);
-        const omittedEx = isOmitted(ex.id);
-
-        if (omittedEx) {
-          return (
-            <div key={ex.id} style={{ background: "#101010", border: "1px dashed #2A2A2A", borderRadius: 14, marginBottom: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.6 }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#666", textDecoration: "line-through" }}>{ex.name}</div>
-                <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace", marginTop: 2, letterSpacing: 1 }}>OMITTED FROM REPORT</div>
-              </div>
-              <button onClick={() => toggleOmit(ex.id)} style={{ background: "#222", border: "none", color: "#AAA", borderRadius: 6, padding: "6px 12px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Include</button>
-            </div>
-          );
-        }
-
-        return (
-          <div key={ex.id} style={{ background: allDone ? `${day.color}08` : "#151515", border: `1px solid ${allDone ? `${day.color}30` : "#222"}`, borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
-            <div style={{ padding: "14px 14px 6px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: allDone ? "#888" : "#E8E8E8" }}>{ex.name}</div>
-                <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginTop: 2 }}>{ex.sets} x {ex.reps} · rest {ex.rest}</div>
-              </div>
-              <div style={{ display: "flex", gap: 4 }}>
-                <button onClick={() => toggleOmit(ex.id)} title="Omit from report" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Omit</button>
-                <button onClick={() => setHistoryView(ex.id)} style={{ background: "#222", border: "none", color: "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>History</button>
-              </div>
-            </div>
-
-            {last && (
-              <div style={{ padding: "0 14px 4px", fontSize: 11, color: "#555" }}>
-                Last ({last.date}): {Object.keys(last.data).sort((a,b)=>a-b).map(si => `${last.data[si].weight||"?"}x${last.data[si].reps||"?"}`).join(" / ")}
-              </div>
-            )}
-
-            <div style={{ padding: "8px 14px 14px" }}>
-              {Array.from({ length: ex.sets }, (_, si) => {
-                const sd = exData[si] || {};
-                const isActive = activeSet === `${ex.id}-${si}`;
-                const isDone = sd.done;
-
-                if (isDone && !isActive) {
-                  return (
-                    <div key={si} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: `${day.color}10`, borderRadius: 8, marginBottom: 4 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: 6, background: day.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </div>
-                      <span style={{ fontSize: 13, color: "#999", fontFamily: "monospace" }}>Set {si+1}: {sd.weight||"--"} lb x {sd.reps||"--"}</span>
-                      <button onClick={() => setActiveSet(`${ex.id}-${si}`)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer" }}>Edit</button>
-                    </div>
-                  );
-                }
-
-                if (!isActive) {
-                  return (
-                    <button key={si} onClick={() => setActiveSet(`${ex.id}-${si}`)} style={{
-                      display: "flex", alignItems: "center", gap: 10, padding: "10px", background: "#1A1A1A",
-                      border: "1px solid #2A2A2A", borderRadius: 8, marginBottom: 4, cursor: "pointer", width: "100%", textAlign: "left",
-                    }}>
-                      <div style={{ width: 24, height: 24, borderRadius: 6, border: "2px solid #444", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 11, color: "#666", fontWeight: 600 }}>{si+1}</span>
-                      </div>
-                      <span style={{ fontSize: 13, color: "#777" }}>Tap to log set {si+1}</span>
-                    </button>
-                  );
-                }
-
-                return (
-                  <div key={si} style={{ padding: 12, background: `${day.color}12`, border: `1px solid ${day.color}40`, borderRadius: 10, marginBottom: 4 }}>
-                    <div style={{ fontSize: 12, color: day.color, fontWeight: 600, marginBottom: 10 }}>Set {si+1}</div>
-                    <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Weight (lb)</label>
-                        <input type="number" inputMode="decimal" value={sd.weight||""} onChange={e => updateSet(ex.id, si, "weight", e.target.value)}
-                          placeholder={last?.data?.[si]?.weight||"0"} autoFocus
-                          style={{ width: "100%", padding: "10px 12px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#E8E8E8", fontSize: 18, fontWeight: 700, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Reps</label>
-                        <input type="number" inputMode="numeric" value={sd.reps||""} onChange={e => updateSet(ex.id, si, "reps", e.target.value)}
-                          placeholder={ex.reps.replace(/[-]/g, "-").split("-")[0]||"0"}
-                          style={{ width: "100%", padding: "10px 12px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#E8E8E8", fontSize: 18, fontWeight: 700, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => markDone(ex.id, si, restSec)} style={{ flex: 1, padding: 12, background: day.color, border: "none", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Done ✓</button>
-                      <button onClick={() => setActiveSet(null)} style={{ padding: "12px 16px", background: "#333", border: "none", borderRadius: 8, color: "#999", fontSize: 13, cursor: "pointer" }}>Cancel</button>
-                    </div>
-                  </div>
-                );
-              })}
+      {(() => {
+        const renderSwapPicker = (primary, currentSwap, currentlyOmitted) => (
+          <div style={{ padding: "10px 14px", borderTop: "1px solid #222", background: "#0E0E0E" }}>
+            <div style={{ fontSize: 10, color: "#666", letterSpacing: 1, marginBottom: 8, fontFamily: "monospace" }}>SUBSTITUTE FOR {primary.name.toUpperCase()}</div>
+            {primary.alts?.map(alt => {
+              const isActive = currentSwap === alt.id;
+              const resolved = resolveAlt(primary, alt.id);
+              return (
+                <button key={alt.id} onClick={() => { setSwap(primary.id, alt.id); setSwapPickerFor(null); }}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left", padding: "8px 10px",
+                    background: isActive ? `${day.color}25` : "#1A1A1A",
+                    border: `1px solid ${isActive ? day.color : "#2A2A2A"}`,
+                    borderRadius: 6, marginBottom: 4, color: isActive ? "#E8E8E8" : "#CCC", fontSize: 13, cursor: "pointer"
+                  }}>
+                  <span>{alt.name}</span>
+                  <span style={{ marginLeft: 8, color: "#666", fontSize: 11, fontFamily: "monospace" }}>{resolved.sets}×{resolved.reps}</span>
+                  {isActive && <span style={{ float: "right", color: day.color }}>✓</span>}
+                </button>
+              );
+            })}
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              {currentSwap && (
+                <button onClick={() => { clearSwap(primary.id); setSwapPickerFor(null); }}
+                  style={{ flex: 1, padding: 8, background: "#222", border: "none", borderRadius: 6, color: "#CCC", fontSize: 12, cursor: "pointer" }}>
+                  ↩ Use {primary.name}
+                </button>
+              )}
+              {!currentlyOmitted && !currentSwap && (
+                <button onClick={() => { toggleOmit(primary.id); setSwapPickerFor(null); }}
+                  style={{ flex: 1, padding: 8, background: "#1A1A1A", border: "1px solid #3A2525", borderRadius: 6, color: "#C99", fontSize: 12, cursor: "pointer" }}>
+                  Omit from report
+                </button>
+              )}
+              {currentlyOmitted && (
+                <button onClick={() => { toggleOmit(primary.id); setSwapPickerFor(null); }}
+                  style={{ flex: 1, padding: 8, background: "#1A1A1A", border: "1px solid #253A25", borderRadius: 6, color: "#9C9", fontSize: 12, cursor: "pointer" }}>
+                  Include
+                </button>
+              )}
+              <button onClick={() => setSwapPickerFor(null)}
+                style={{ padding: "8px 14px", background: "#222", border: "none", borderRadius: 6, color: "#666", fontSize: 12, cursor: "pointer" }}>
+                Close
+              </button>
             </div>
           </div>
         );
-      })}
+
+        const renderCard = (slot, { primary, accessory }) => {
+          const exData = session[slot.id] || {};
+          const last = getLast(slot.id, slot._scope || "day");
+          const allDone = Array.from({ length: slot.sets }, (_, i) => exData[i]?.done).every(Boolean);
+          const restSec = parseRest(slot.rest);
+          const swapId = primary ? getSwap(primary.id) : null;
+          const showPicker = primary && swapPickerFor === primary.id;
+          const cardKey = primary ? primary.id : `acc-${slot.id}`;
+
+          return (
+            <div key={cardKey} style={{ background: allDone ? `${day.color}08` : "#151515", border: `1px solid ${allDone ? `${day.color}30` : "#222"}`, borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
+              <div style={{ padding: "14px 14px 6px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: allDone ? "#888" : "#E8E8E8" }}>{slot.name}</div>
+                    {swapId && <span style={{ fontSize: 9, color: day.color, background: `${day.color}22`, padding: "2px 6px", borderRadius: 4, letterSpacing: 1, fontFamily: "monospace" }}>SUB</span>}
+                    {accessory && <span style={{ fontSize: 9, color: "#888", background: "#1A1A1A", border: "1px solid #2A2A2A", padding: "2px 6px", borderRadius: 4, letterSpacing: 1, fontFamily: "monospace" }}>ACC</span>}
+                  </div>
+                  {swapId && <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>in place of {primary.name}</div>}
+                  <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginTop: 2 }}>{slot.sets} × {slot.reps} · rest {slot.rest}</div>
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {primary && <button onClick={() => setSwapPickerFor(showPicker ? null : primary.id)} style={{ background: showPicker ? `${day.color}25` : "#1A1A1A", border: `1px solid ${showPicker ? day.color : "#2A2A2A"}`, color: showPicker ? day.color : "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Sub ▾</button>}
+                  {accessory && <button onClick={() => removeAccessory(slot.id)} title="Remove" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Remove</button>}
+                  <button onClick={() => setHistoryView(slot.id)} style={{ background: "#222", border: "none", color: "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>History</button>
+                </div>
+              </div>
+
+              {showPicker && renderSwapPicker(primary, swapId, false)}
+
+              {last && (
+                <div style={{ padding: "0 14px 4px", fontSize: 11, color: "#555" }}>
+                  Last ({last.date}): {Object.keys(last.data).filter(s => /^\d+$/.test(s)).sort((a,b)=>a-b).map(si => `${last.data[si].weight||"?"}x${last.data[si].reps||"?"}`).join(" / ")}
+                </div>
+              )}
+
+              <div style={{ padding: "8px 14px 14px" }}>
+                {Array.from({ length: slot.sets }, (_, si) => {
+                  const sd = exData[si] || {};
+                  const isActive = activeSet === `${slot.id}-${si}`;
+                  const isDone = sd.done;
+
+                  if (isDone && !isActive) {
+                    return (
+                      <div key={si} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: `${day.color}10`, borderRadius: 8, marginBottom: 4 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 6, background: day.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <span style={{ fontSize: 13, color: "#999", fontFamily: "monospace" }}>Set {si+1}: {sd.weight||"--"} lb x {sd.reps||"--"}</span>
+                        <button onClick={() => setActiveSet(`${slot.id}-${si}`)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer" }}>Edit</button>
+                      </div>
+                    );
+                  }
+
+                  if (!isActive) {
+                    return (
+                      <button key={si} onClick={() => setActiveSet(`${slot.id}-${si}`)} style={{
+                        display: "flex", alignItems: "center", gap: 10, padding: "10px", background: "#1A1A1A",
+                        border: "1px solid #2A2A2A", borderRadius: 8, marginBottom: 4, cursor: "pointer", width: "100%", textAlign: "left",
+                      }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 6, border: "2px solid #444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 11, color: "#666", fontWeight: 600 }}>{si+1}</span>
+                        </div>
+                        <span style={{ fontSize: 13, color: "#777" }}>Tap to log set {si+1}</span>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div key={si} style={{ padding: 12, background: `${day.color}12`, border: `1px solid ${day.color}40`, borderRadius: 10, marginBottom: 4 }}>
+                      <div style={{ fontSize: 12, color: day.color, fontWeight: 600, marginBottom: 10 }}>Set {si+1}</div>
+                      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Weight (lb)</label>
+                          <input type="number" inputMode="decimal" value={sd.weight||""} onChange={e => updateSet(slot.id, si, "weight", e.target.value)}
+                            placeholder={last?.data?.[si]?.weight||"0"} autoFocus
+                            style={{ width: "100%", padding: "10px 12px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#E8E8E8", fontSize: 18, fontWeight: 700, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                          />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Reps</label>
+                          <input type="number" inputMode="numeric" value={sd.reps||""} onChange={e => updateSet(slot.id, si, "reps", e.target.value)}
+                            placeholder={String(slot.reps).split("-")[0]||"0"}
+                            style={{ width: "100%", padding: "10px 12px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#E8E8E8", fontSize: 18, fontWeight: 700, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => markDone(slot.id, si, restSec)} style={{ flex: 1, padding: 12, background: day.color, border: "none", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Done ✓</button>
+                        <button onClick={() => setActiveSet(null)} style={{ padding: "12px 16px", background: "#333", border: "none", borderRadius: 8, color: "#999", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        };
+
+        const primaryCards = day.exercises.map(primary => {
+          const omittedEx = isOmitted(primary.id);
+          const swapId = getSwap(primary.id);
+          const showPicker = swapPickerFor === primary.id;
+
+          if (omittedEx) {
+            return (
+              <div key={primary.id} style={{ background: "#101010", border: "1px dashed #2A2A2A", borderRadius: 14, marginBottom: 10, overflow: "hidden", opacity: 0.75 }}>
+                <div style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#666", textDecoration: "line-through" }}>{primary.name}</div>
+                    <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace", marginTop: 2, letterSpacing: 1 }}>OMITTED FROM REPORT</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => setSwapPickerFor(showPicker ? null : primary.id)} style={{ background: showPicker ? `${day.color}25` : "#1A1A1A", border: `1px solid ${showPicker ? day.color : "#2A2A2A"}`, color: showPicker ? day.color : "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Sub ▾</button>
+                    <button onClick={() => toggleOmit(primary.id)} style={{ background: "#222", border: "none", color: "#AAA", borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Include</button>
+                  </div>
+                </div>
+                {showPicker && renderSwapPicker(primary, null, true)}
+              </div>
+            );
+          }
+
+          const slot = swapId
+            ? { ...resolveAlt(primary, swapId), _swapFor: primary, _scope: "global" }
+            : { ...primary, _scope: "day" };
+          return renderCard(slot, { primary });
+        });
+
+        const accessoryCards = accessorySlots.map(slot => renderCard(slot, { accessory: true }));
+
+        const availableAccessories = (ACCESSORIES[day.id] || []).filter(a => !accessoryIds.includes(a.id));
+        const accessoryPicker = showAccessoryPicker ? (
+          <div key="acc-picker" style={{ background: "#151515", border: "1px solid #2A2A2A", borderRadius: 14, padding: "12px 14px", marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: "#888", letterSpacing: 1, marginBottom: 10, fontFamily: "monospace" }}>ADD ACCESSORY</div>
+            {availableAccessories.length === 0 && <div style={{ fontSize: 12, color: "#666", padding: "6px 0" }}>All accessories already added.</div>}
+            {availableAccessories.map(acc => (
+              <button key={acc.id} onClick={() => { addAccessory(acc.id); setShowAccessoryPicker(false); }}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 6, marginBottom: 4, color: "#CCC", fontSize: 13, cursor: "pointer" }}>
+                <span>{acc.name}</span>
+                <span style={{ marginLeft: 8, color: "#666", fontSize: 11, fontFamily: "monospace" }}>{acc.sets}×{acc.reps}</span>
+              </button>
+            ))}
+            <button onClick={() => setShowAccessoryPicker(false)} style={{ width: "100%", padding: 8, background: "#222", border: "none", borderRadius: 6, color: "#666", fontSize: 12, cursor: "pointer", marginTop: 6 }}>Close</button>
+          </div>
+        ) : (
+          <button key="acc-add" onClick={() => setShowAccessoryPicker(true)}
+            style={{ width: "100%", padding: "12px", background: "transparent", border: "1px dashed #333", borderRadius: 12, color: "#666", fontSize: 13, cursor: "pointer", marginBottom: 10 }}>
+            + Add accessory
+          </button>
+        );
+
+        return [...primaryCards, ...accessoryCards, accessoryPicker];
+      })()}
     </div>
   );
 }
