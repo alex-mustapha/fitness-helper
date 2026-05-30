@@ -357,6 +357,7 @@ function App() {
   const [emailSent, setEmailSent] = useState({});
   const [swapPickerFor, setSwapPickerFor] = useState(null);
   const [showAccessoryPicker, setShowAccessoryPicker] = useState(false);
+  const [historyMetric, setHistoryMetric] = useState("top");
   const prevCompleted = useRef(0);
 
   const persist = useCallback((fn) => {
@@ -538,7 +539,7 @@ function App() {
     Object.keys(log.sessions)
       .filter(k => scope === "day" ? k.endsWith(`-${day.id}`) : true)
       .filter(k => log.sessions[k]?.[exId] && Object.keys(log.sessions[k][exId]).some(s => /^\d+$/.test(s)))
-      .sort().reverse().slice(0, 10)
+      .sort().reverse().slice(0, 20)
       .map(k => ({ date: k.slice(0,10), data: log.sessions[k][exId] }));
 
   const clearToday = () => {
@@ -624,28 +625,180 @@ function App() {
       if (acc) { ex = acc; scope = "global"; }
     }
     const hist = getHistory(historyView, scope);
+
+    const computeMetric = (sessionData, metric) => {
+      const setKeys = Object.keys(sessionData).filter(s => /^\d+$/.test(s));
+      if (setKeys.length === 0) return 0;
+      if (metric === "top") {
+        return Math.max(...setKeys.map(si => parseFloat(sessionData[si].weight) || 0));
+      }
+      if (metric === "volume") {
+        return setKeys.reduce((sum, si) => {
+          const w = parseFloat(sessionData[si].weight) || 0;
+          const r = parseInt(sessionData[si].reps) || 0;
+          return sum + w * r;
+        }, 0);
+      }
+      if (metric === "e1rm") {
+        let max = 0;
+        for (const si of setKeys) {
+          const w = parseFloat(sessionData[si].weight) || 0;
+          const r = parseInt(sessionData[si].reps) || 0;
+          if (w === 0 || r === 0) continue;
+          const e1rm = r === 1 ? w : w * (1 + r / 30);
+          if (e1rm > max) max = e1rm;
+        }
+        return Math.round(max);
+      }
+      if (metric === "reps") {
+        return Math.max(...setKeys.map(si => parseInt(sessionData[si].reps) || 0));
+      }
+      return 0;
+    };
+
+    const METRICS = [
+      { id: "top", label: "Top Wt" },
+      { id: "volume", label: "Volume" },
+      { id: "e1rm", label: "e1RM" },
+      { id: "reps", label: "Top Reps" },
+    ];
+
+    // chronological (oldest -> newest) for the chart
+    const chrono = [...hist].reverse();
+    const chartData = chrono.map(h => ({ date: h.date, value: computeMetric(h.data, historyMetric) }));
+    const nonZero = chartData.filter(d => d.value > 0);
+
+    const renderChart = () => {
+      if (nonZero.length < 2) return null;
+      const w = 400, h = 180, padL = 44, padR = 12, padT = 14, padB = 28;
+      const innerW = w - padL - padR;
+      const innerH = h - padT - padB;
+      const values = chartData.map(d => d.value);
+      const maxV = Math.max(...values);
+      const minV = Math.min(...values.filter(v => v > 0));
+      const span = maxV - minV;
+      const pad = span * 0.15 || Math.max(1, maxV * 0.1);
+      const step = maxV > 200 ? 25 : maxV > 50 ? 10 : 5;
+      const yMin = Math.max(0, Math.floor((minV - pad) / step) * step);
+      const yMax = Math.ceil((maxV + pad) / step) * step;
+      const yRange = yMax - yMin || 1;
+      const xScale = (i) => chartData.length <= 1 ? padL + innerW / 2 : padL + (i / (chartData.length - 1)) * innerW;
+      const yScale = (v) => padT + innerH - ((v - yMin) / yRange) * innerH;
+      const points = chartData.map((d, i) => ({ x: xScale(i), y: yScale(d.value), value: d.value, date: d.date }));
+      // path only across points with value > 0
+      const pathSegments = [];
+      let inSeg = false;
+      points.forEach((p, i) => {
+        if (p.value > 0) {
+          pathSegments.push(`${inSeg ? "L" : "M"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+          inSeg = true;
+        } else { inSeg = false; }
+      });
+      const path = pathSegments.join(" ");
+      const gridYs = [yMin, Math.round((yMin + yMax) / 2), yMax];
+      const xLabelIdxs = chartData.length >= 3 ? [0, Math.floor(chartData.length / 2), chartData.length - 1] : [0, chartData.length - 1];
+      return (
+        <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }} preserveAspectRatio="xMidYMid meet">
+          {gridYs.map(gy => (
+            <g key={gy}>
+              <line x1={padL} y1={yScale(gy)} x2={padL + innerW} y2={yScale(gy)} stroke="#1F1F1F" strokeWidth="1" />
+              <text x={padL - 6} y={yScale(gy) + 3} fontSize="10" fill="#666" textAnchor="end" fontFamily="monospace">{gy.toLocaleString()}</text>
+            </g>
+          ))}
+          <path d={path} fill="none" stroke={day.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          {points.filter(p => p.value > 0).map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={day.color} stroke="#0F0F0F" strokeWidth="1.5" />
+          ))}
+          {xLabelIdxs.map((idx, i) => {
+            const p = points[idx];
+            if (!p) return null;
+            const anchor = i === 0 ? "start" : i === xLabelIdxs.length - 1 ? "end" : "middle";
+            return <text key={idx} x={p.x} y={h - 8} fontSize="9" fill="#666" textAnchor={anchor} fontFamily="monospace">{p.date.slice(5)}</text>;
+          })}
+        </svg>
+      );
+    };
+
+    // Trend delta: compare latest vs first non-zero
+    const trendDelta = (() => {
+      const nz = chartData.filter(d => d.value > 0);
+      if (nz.length < 2) return null;
+      const first = nz[0].value;
+      const last = nz[nz.length - 1].value;
+      const delta = last - first;
+      const pct = first > 0 ? (delta / first) * 100 : 0;
+      return { delta, pct, last, first };
+    })();
+
     return (
       <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
         <button onClick={() => setHistoryView(null)} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer", padding: "8px 0" }}>← Back</button>
         <h2 style={{ margin: "12px 0 4px", fontSize: 20, fontWeight: 700 }}>{ex?.name}</h2>
-        <p style={{ color: "#666", fontSize: 13, margin: "0 0 20px" }}>Last {hist.length} sessions</p>
+        <p style={{ color: "#666", fontSize: 13, margin: "0 0 16px" }}>Last {hist.length} session{hist.length === 1 ? "" : "s"}{scope === "global" ? " · all days" : ""}</p>
+
         {hist.length === 0 && <p style={{ color: "#555", fontSize: 14 }}>No history yet.</p>}
-        {hist.map((h, i) => (
-          <div key={i} style={{ background: "#181818", borderRadius: 10, border: "1px solid #252525", padding: "12px 14px", marginBottom: 8 }}>
-            <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginBottom: 8 }}>{h.date}</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {Object.keys(h.data).sort((a,b)=>a-b).map(si => {
-                const s = h.data[si];
-                return <div key={si} style={{ background: "#222", borderRadius: 6, padding: "6px 10px", fontSize: 13 }}>
-                  <span style={{ color: "#999" }}>S{parseInt(si)+1}</span>{" "}
-                  <span style={{ color: "#E8E8E8", fontWeight: 600 }}>{s.weight||"—"}</span>
-                  <span style={{ color: "#666" }}> lb × </span>
-                  <span style={{ color: "#E8E8E8" }}>{s.reps||"—"}</span>
-                </div>;
-              })}
+
+        {hist.length > 0 && (
+          <>
+            {/* Metric toggle */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+              {METRICS.map(m => (
+                <button key={m.id} onClick={() => setHistoryMetric(m.id)} style={{
+                  flex: 1, padding: "8px 4px",
+                  background: historyMetric === m.id ? `${day.color}25` : "#1A1A1A",
+                  border: `1px solid ${historyMetric === m.id ? day.color : "#2A2A2A"}`,
+                  borderRadius: 6, color: historyMetric === m.id ? "#E8E8E8" : "#888",
+                  fontSize: 11, fontFamily: "monospace", cursor: "pointer", letterSpacing: 1,
+                }}>{m.label}</button>
+              ))}
             </div>
-          </div>
-        ))}
+
+            {/* Chart */}
+            <div style={{ background: "#0E0E0E", border: "1px solid #1F1F1F", borderRadius: 10, padding: "10px 6px 6px", marginBottom: 16, position: "relative" }}>
+              {nonZero.length >= 2 ? renderChart() : (
+                <div style={{ height: 140, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 12 }}>
+                  Need at least 2 sessions with data to chart.
+                </div>
+              )}
+              {trendDelta && (
+                <div style={{ position: "absolute", top: 8, right: 10, fontSize: 11, fontFamily: "monospace", color: trendDelta.delta > 0 ? "#4ade80" : trendDelta.delta < 0 ? "#f87171" : "#888" }}>
+                  {trendDelta.delta > 0 ? "▲" : trendDelta.delta < 0 ? "▼" : "·"} {trendDelta.delta > 0 ? "+" : ""}{Math.round(trendDelta.delta).toLocaleString()} ({trendDelta.pct > 0 ? "+" : ""}{trendDelta.pct.toFixed(1)}%)
+                </div>
+              )}
+            </div>
+
+            {/* Session table */}
+            {hist.map((h, i) => {
+              const top = computeMetric(h.data, "top");
+              const vol = computeMetric(h.data, "volume");
+              const e1rm = computeMetric(h.data, "e1rm");
+              const setKeys = Object.keys(h.data).filter(s => /^\d+$/.test(s)).sort((a,b)=>a-b);
+              return (
+                <div key={i} style={{ background: "#151515", borderRadius: 10, border: "1px solid #222", padding: "10px 12px", marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 12, color: "#888", fontFamily: "monospace" }}>{h.date}</div>
+                    <div style={{ display: "flex", gap: 10, fontFamily: "monospace", fontSize: 11 }}>
+                      {top > 0 && <span><span style={{ color: "#555" }}>top </span><span style={{ color: "#E8E8E8", fontWeight: 700 }}>{top}</span></span>}
+                      {vol > 0 && <span><span style={{ color: "#555" }}>vol </span><span style={{ color: "#E8E8E8", fontWeight: 700 }}>{vol.toLocaleString()}</span></span>}
+                      {e1rm > 0 && <span><span style={{ color: "#555" }}>e1RM </span><span style={{ color: day.color, fontWeight: 700 }}>{e1rm}</span></span>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {setKeys.map(si => {
+                      const s = h.data[si];
+                      return <div key={si} style={{ background: "#1F1F1F", borderRadius: 6, padding: "5px 9px", fontSize: 12, fontFamily: "monospace" }}>
+                        <span style={{ color: "#666" }}>S{parseInt(si)+1}</span>{" "}
+                        <span style={{ color: "#E8E8E8", fontWeight: 600 }}>{s.weight||"—"}</span>
+                        <span style={{ color: "#555" }}>×</span>
+                        <span style={{ color: "#E8E8E8" }}>{s.reps||"—"}</span>
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
     );
   }
