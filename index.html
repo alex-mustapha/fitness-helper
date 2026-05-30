@@ -617,6 +617,123 @@ function App() {
     setHistoryView(null);
   };
 
+  const generateMockData = () => {
+    if (!confirm("Replace all current data with 30 mock sessions across the past ~10 weeks? This cannot be undone.")) return;
+
+    const targets = {
+      a1: { startW: 165, endW: 200, baseReps: 5 },
+      a2: { startW: 135, endW: 170, baseReps: 7 },
+      a3: { startW: 115, endW: 145, baseReps: 9 },
+      a4: { startW: 50,  endW: 70,  baseReps: 11 },
+      a5: { startW: 30,  endW: 45,  baseReps: 18 },
+      a6: { startW: 0,   endW: 0,   baseReps: 40 },
+      b1: { startW: 85,  endW: 115, baseReps: 6 },
+      b2: { startW: 235, endW: 295, baseReps: 5 },
+      b3: { startW: 45,  endW: 65,  baseReps: 9 },
+      b4: { startW: 105, endW: 135, baseReps: 11 },
+      b5: { startW: 260, endW: 330, baseReps: 11 },
+      b6: { startW: 25,  endW: 40,  baseReps: 12 },
+      c1: { startW: 255, endW: 320, baseReps: 4 },
+      c2: { startW: 85,  endW: 115, baseReps: 9 },
+      c3: { startW: 50,  endW: 75,  baseReps: 11 },
+      c4: { startW: 110, endW: 140, baseReps: 11 },
+      c5: { startW: 25,  endW: 50,  baseReps: 10 },
+      c6: { startW: 0,   endW: 0,   baseReps: 12 },
+    };
+
+    const noise = (range) => (Math.random() - 0.5) * range;
+    const roundTo = (n, step) => Math.round(n / step) * step;
+    const pad2 = (n) => String(n).padStart(2, "0");
+
+    const sessions = {};
+    const bodyweight = {};
+    const totalSessions = 30;
+    const totalDaysSpan = 68;
+    const today = new Date();
+    const dayPattern = ["a", "b", "c"];
+
+    for (let i = 0; i < totalSessions; i++) {
+      const progress = i / (totalSessions - 1);
+      const dateOffset = totalDaysSpan - Math.round(progress * totalDaysSpan);
+      const sessionDate = new Date(today);
+      sessionDate.setDate(today.getDate() - dateOffset);
+      const dateKey = `${sessionDate.getFullYear()}-${pad2(sessionDate.getMonth()+1)}-${pad2(sessionDate.getDate())}`;
+      const dayId = dayPattern[i % 3];
+      const sessionKey = `${dateKey}-${dayId}`;
+
+      const dayDef = DAYS.find(d => d.id === dayId);
+      const sessionData = {};
+
+      for (const ex of dayDef.exercises) {
+        const t = targets[ex.id];
+        if (!t) continue;
+        const baseW = t.startW + (t.endW - t.startW) * progress;
+        const baseR = t.baseReps + Math.round(progress * 1.2);
+        const sessionWeight = baseW > 0 ? roundTo(baseW + noise(8), 5) : 0;
+        sessionData[ex.id] = {};
+        for (let s = 0; s < ex.sets; s++) {
+          const dropoff = s >= 2 ? Math.max(0, Math.round(Math.random() * 1.2)) : 0;
+          const reps = Math.max(1, baseR + Math.round(noise(2)) - dropoff);
+          sessionData[ex.id][s] = {
+            weight: sessionWeight > 0 ? String(sessionWeight) : "",
+            reps: String(reps),
+            done: true,
+          };
+        }
+        // ~8% chance of last set skipped
+        if (ex.sets > 2 && Math.random() < 0.08) {
+          sessionData[ex.id][ex.sets - 1] = { weight: "", reps: "", done: false };
+        }
+      }
+
+      // Pull-up accessory on Day B (~60% of the time)
+      if (dayId === "b" && Math.random() < 0.6) {
+        sessionData._accessories = ["pull-up"];
+        sessionData["pull-up"] = {};
+        const reps = 5 + Math.round(progress * 4);
+        for (let s = 0; s < 3; s++) {
+          sessionData["pull-up"][s] = {
+            weight: "",
+            reps: String(Math.max(1, reps - s + Math.round(noise(1)))),
+            done: true,
+          };
+        }
+      }
+
+      // Calf raise accessory on Day A (~50% of the time)
+      if (dayId === "a" && Math.random() < 0.5) {
+        sessionData._accessories = ["calf-raise"];
+        sessionData["calf-raise"] = {};
+        const w = roundTo(45 + progress * 35 + noise(10), 5);
+        for (let s = 0; s < 3; s++) {
+          sessionData["calf-raise"][s] = {
+            weight: String(w),
+            reps: String(Math.max(8, 13 + Math.round(noise(3)))),
+            done: true,
+          };
+        }
+      }
+
+      sessionData._ended = true;
+      sessions[sessionKey] = sessionData;
+
+      // Bodyweight every other session: 180 → 174 trend
+      if (i % 2 === 0) {
+        const bw = (180 - progress * 6 + noise(1.2)).toFixed(1);
+        bodyweight[dateKey] = bw;
+      }
+    }
+
+    const newLog = { sessions, bodyweight };
+    save(newLog);
+    setLog(newLog);
+    setShowEmailBanner(false);
+    setEmailSent({});
+    setActiveSet(null);
+    setRestTimer(null); setRestLeft(0);
+    setHistoryView(null);
+  };
+
   const endWorkout = () => {
     const primariesToOmit = [];
     const accessoriesToRemove = [];
@@ -934,6 +1051,7 @@ function App() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={exportData} style={{ background: "#1A1A1A", border: "1px solid #333", color: "#888", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Export</button>
+          <button onClick={generateMockData} title="Load 30 mock sessions across the past ~10 weeks" style={{ background: "#1A1A1A", border: "1px solid #2A3A2A", color: "#6A8" , borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Demo</button>
           <button onClick={clearAllData} title="Clear all data" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
         </div>
       </div>
