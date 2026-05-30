@@ -358,6 +358,7 @@ function App() {
   const [swapPickerFor, setSwapPickerFor] = useState(null);
   const [showAccessoryPicker, setShowAccessoryPicker] = useState(false);
   const [historyMetric, setHistoryMetric] = useState("top");
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const prevCompleted = useRef(0);
 
   const persist = useCallback((fn) => {
@@ -539,7 +540,7 @@ function App() {
     Object.keys(log.sessions)
       .filter(k => scope === "day" ? k.endsWith(`-${day.id}`) : true)
       .filter(k => log.sessions[k]?.[exId] && Object.keys(log.sessions[k][exId]).some(s => /^\d+$/.test(s)))
-      .sort().reverse().slice(0, 20)
+      .sort().reverse()
       .map(k => ({ date: k.slice(0,10), data: log.sessions[k][exId] }));
 
   const clearToday = () => {
@@ -697,6 +698,7 @@ function App() {
       const path = pathSegments.join(" ");
       const gridYs = [yMin, Math.round((yMin + yMax) / 2), yMax];
       const xLabelIdxs = chartData.length >= 3 ? [0, Math.floor(chartData.length / 2), chartData.length - 1] : [0, chartData.length - 1];
+      const dotR = chartData.length > 60 ? 0 : chartData.length > 30 ? 2 : 3.5;
       return (
         <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }} preserveAspectRatio="xMidYMid meet">
           {gridYs.map(gy => (
@@ -706,8 +708,8 @@ function App() {
             </g>
           ))}
           <path d={path} fill="none" stroke={day.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-          {points.filter(p => p.value > 0).map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={day.color} stroke="#0F0F0F" strokeWidth="1.5" />
+          {dotR > 0 && points.filter(p => p.value > 0).map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={dotR} fill={day.color} stroke="#0F0F0F" strokeWidth="1.5" />
           ))}
           {xLabelIdxs.map((idx, i) => {
             const p = points[idx];
@@ -719,22 +721,59 @@ function App() {
       );
     };
 
-    // Trend delta: compare latest vs first non-zero
-    const trendDelta = (() => {
+    // Period-based summary stats for the selected metric
+    const summaryStats = (() => {
+      if (chartData.length === 0) return null;
       const nz = chartData.filter(d => d.value > 0);
-      if (nz.length < 2) return null;
-      const first = nz[0].value;
-      const last = nz[nz.length - 1].value;
-      const delta = last - first;
-      const pct = first > 0 ? (delta / first) * 100 : 0;
-      return { delta, pct, last, first };
+      if (nz.length === 0) return null;
+      let prValue = 0, prDate = null;
+      for (const d of nz) {
+        if (d.value > prValue) { prValue = d.value; prDate = d.date; }
+      }
+      const current = nz[nz.length - 1].value;
+      const currentDate = nz[nz.length - 1].date;
+      const todayMs = Date.now();
+      const changeOver = (days) => {
+        const cutoff = todayMs - days * 86400 * 1000;
+        const older = nz.filter(d => new Date(d.date).getTime() <= cutoff);
+        if (older.length === 0) return null;
+        const old = older[older.length - 1].value;
+        if (old === 0) return null;
+        return { delta: current - old, pct: ((current - old) / old) * 100, fromDate: older[older.length - 1].date };
+      };
+      const allTime = nz[0].value > 0
+        ? { delta: current - nz[0].value, pct: ((current - nz[0].value) / nz[0].value) * 100, fromDate: nz[0].date }
+        : null;
+      return { pr: { value: prValue, date: prDate }, current, currentDate, d30: changeOver(30), d90: changeOver(90), allTime, spanDays: nz.length >= 2 ? Math.round((todayMs - new Date(nz[0].date).getTime()) / 86400000) : 0 };
     })();
+
+    const DETAIL_LIMIT = 15;
+    const visibleHist = showAllHistory ? hist : hist.slice(0, DETAIL_LIMIT);
+    const renderDelta = (d, label) => {
+      if (!d) return (
+        <div style={{ flex: "1 1 80px", background: "#0E0E0E", border: "1px solid #1A1A1A", borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ fontSize: 9, color: "#444", letterSpacing: 1, fontFamily: "monospace" }}>Δ {label}</div>
+          <div style={{ fontSize: 13, color: "#444", fontFamily: "monospace", marginTop: 2 }}>—</div>
+        </div>
+      );
+      const up = d.delta > 0, down = d.delta < 0;
+      const color = up ? "#4ade80" : down ? "#f87171" : "#888";
+      return (
+        <div style={{ flex: "1 1 80px", background: "#0E0E0E", border: "1px solid #1F1F1F", borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>Δ {label}</div>
+          <div style={{ fontSize: 13, color, fontFamily: "monospace", marginTop: 2, fontWeight: 700 }}>
+            {up ? "+" : ""}{Math.round(d.delta).toLocaleString()}
+          </div>
+          <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace" }}>{up ? "+" : ""}{d.pct.toFixed(1)}%</div>
+        </div>
+      );
+    };
 
     return (
       <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
-        <button onClick={() => setHistoryView(null)} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer", padding: "8px 0" }}>← Back</button>
+        <button onClick={() => { setHistoryView(null); setShowAllHistory(false); }} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer", padding: "8px 0" }}>← Back</button>
         <h2 style={{ margin: "12px 0 4px", fontSize: 20, fontWeight: 700 }}>{ex?.name}</h2>
-        <p style={{ color: "#666", fontSize: 13, margin: "0 0 16px" }}>Last {hist.length} session{hist.length === 1 ? "" : "s"}{scope === "global" ? " · all days" : ""}</p>
+        <p style={{ color: "#666", fontSize: 13, margin: "0 0 16px" }}>{hist.length} session{hist.length === 1 ? "" : "s"}{summaryStats?.spanDays ? ` · ${summaryStats.spanDays} days` : ""}{scope === "global" ? " · all days" : ""}</p>
 
         {hist.length === 0 && <p style={{ color: "#555", fontSize: 14 }}>No history yet.</p>}
 
@@ -753,22 +792,46 @@ function App() {
               ))}
             </div>
 
+            {/* Summary stats */}
+            {summaryStats && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                  <div style={{ flex: 1, background: "#151515", border: "1px solid #222", borderRadius: 8, padding: "10px 12px" }}>
+                    <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>CURRENT</div>
+                    <div style={{ fontSize: 18, color: "#E8E8E8", fontWeight: 700, fontFamily: "monospace", marginTop: 2 }}>{summaryStats.current.toLocaleString()}</div>
+                    <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace" }}>{summaryStats.currentDate}</div>
+                  </div>
+                  <div style={{ flex: 1, background: "#151515", border: `1px solid ${day.color}40`, borderRadius: 8, padding: "10px 12px" }}>
+                    <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>PR</div>
+                    <div style={{ fontSize: 18, color: day.color, fontWeight: 700, fontFamily: "monospace", marginTop: 2 }}>{summaryStats.pr.value.toLocaleString()}</div>
+                    <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace" }}>{summaryStats.pr.date}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {renderDelta(summaryStats.d30, "30d")}
+                  {renderDelta(summaryStats.d90, "90d")}
+                  {renderDelta(summaryStats.allTime, "all")}
+                </div>
+              </div>
+            )}
+
             {/* Chart */}
-            <div style={{ background: "#0E0E0E", border: "1px solid #1F1F1F", borderRadius: 10, padding: "10px 6px 6px", marginBottom: 16, position: "relative" }}>
+            <div style={{ background: "#0E0E0E", border: "1px solid #1F1F1F", borderRadius: 10, padding: "10px 6px 6px", marginBottom: 16 }}>
               {nonZero.length >= 2 ? renderChart() : (
                 <div style={{ height: 140, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 12 }}>
                   Need at least 2 sessions with data to chart.
                 </div>
               )}
-              {trendDelta && (
-                <div style={{ position: "absolute", top: 8, right: 10, fontSize: 11, fontFamily: "monospace", color: trendDelta.delta > 0 ? "#4ade80" : trendDelta.delta < 0 ? "#f87171" : "#888" }}>
-                  {trendDelta.delta > 0 ? "▲" : trendDelta.delta < 0 ? "▼" : "·"} {trendDelta.delta > 0 ? "+" : ""}{Math.round(trendDelta.delta).toLocaleString()} ({trendDelta.pct > 0 ? "+" : ""}{trendDelta.pct.toFixed(1)}%)
-                </div>
-              )}
             </div>
 
             {/* Session table */}
-            {hist.map((h, i) => {
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+              <div style={{ fontSize: 10, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>RECENT SESSIONS</div>
+              <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace" }}>
+                {showAllHistory || hist.length <= DETAIL_LIMIT ? `${hist.length} of ${hist.length}` : `${DETAIL_LIMIT} of ${hist.length}`}
+              </div>
+            </div>
+            {visibleHist.map((h, i) => {
               const top = computeMetric(h.data, "top");
               const vol = computeMetric(h.data, "volume");
               const e1rm = computeMetric(h.data, "e1rm");
@@ -797,6 +860,11 @@ function App() {
                 </div>
               );
             })}
+            {hist.length > DETAIL_LIMIT && (
+              <button onClick={() => setShowAllHistory(s => !s)} style={{ width: "100%", padding: 10, background: "transparent", border: "1px dashed #333", borderRadius: 8, color: "#888", fontSize: 12, cursor: "pointer", marginTop: 4 }}>
+                {showAllHistory ? `Collapse to ${DETAIL_LIMIT} most recent` : `Show all ${hist.length} sessions`}
+              </button>
+            )}
           </>
         )}
       </div>
@@ -992,7 +1060,7 @@ function App() {
                 <div style={{ display: "flex", gap: 4 }}>
                   {primary && <button onClick={() => setSwapPickerFor(showPicker ? null : primary.id)} style={{ background: showPicker ? `${day.color}25` : "#1A1A1A", border: `1px solid ${showPicker ? day.color : "#2A2A2A"}`, color: showPicker ? day.color : "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Sub ▾</button>}
                   {accessory && <button onClick={() => removeAccessory(slot.id)} title="Remove" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Remove</button>}
-                  <button onClick={() => setHistoryView(slot.id)} style={{ background: "#222", border: "none", color: "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>History</button>
+                  <button onClick={() => { setHistoryView(slot.id); setShowAllHistory(false); }} style={{ background: "#222", border: "none", color: "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>History</button>
                 </div>
               </div>
 
