@@ -234,6 +234,60 @@ const fmtDate = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: 
 const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const parseRest = (s) => { const m = s.match(/(\d+)/); if (!m) return 120; const n = parseInt(m[1]); return s.includes("min") ? n * 60 : n; };
 
+const computeMetric = (sessionData, metric) => {
+  const setKeys = Object.keys(sessionData || {}).filter(s => /^\d+$/.test(s));
+  if (setKeys.length === 0) return 0;
+  if (metric === "top") {
+    return Math.max(...setKeys.map(si => parseFloat(sessionData[si].weight) || 0));
+  }
+  if (metric === "volume") {
+    return setKeys.reduce((sum, si) => {
+      const w = parseFloat(sessionData[si].weight) || 0;
+      const r = parseInt(sessionData[si].reps) || 0;
+      return sum + w * r;
+    }, 0);
+  }
+  if (metric === "e1rm") {
+    let max = 0;
+    for (const si of setKeys) {
+      const w = parseFloat(sessionData[si].weight) || 0;
+      const r = parseInt(sessionData[si].reps) || 0;
+      if (w === 0 || r === 0) continue;
+      const e1rm = r === 1 ? w : w * (1 + r / 30);
+      if (e1rm > max) max = e1rm;
+    }
+    return Math.round(max);
+  }
+  if (metric === "reps") {
+    return Math.max(...setKeys.map(si => parseInt(sessionData[si].reps) || 0));
+  }
+  return 0;
+};
+
+const findExerciseMeta = (id) => {
+  for (let di = 0; di < DAYS.length; di++) {
+    const d = DAYS[di];
+    const primary = d.exercises.find(e => e.id === id);
+    if (primary) return { name: primary.name, type: "primary", dayId: d.id, dayIndex: di };
+  }
+  for (const d of DAYS) {
+    for (const p of d.exercises) {
+      const alt = p.alts?.find(a => a.id === id);
+      if (alt) return { name: alt.name, type: "alt" };
+    }
+  }
+  for (const dayId in ACCESSORIES) {
+    const acc = ACCESSORIES[dayId].find(a => a.id === id);
+    if (acc) return { name: acc.name, type: "accessory" };
+  }
+  return { name: id, type: "unknown" };
+};
+
+const computeDelta = (current, old) => {
+  if (!old || old === 0) return null;
+  return { delta: current - old, pct: ((current - old) / old) * 100 };
+};
+
 function App() {
   const [activeDay, setActiveDay] = useState(0);
   const [log, setLog] = useState(load);
@@ -251,6 +305,7 @@ function App() {
   const [draftScheme, setDraftScheme] = useState({ sets: "", reps: "" });
   const [saveStatus, setSaveStatus] = useState({});
   const [syncStatus, setSyncStatus] = useState(null);
+  const [overviewView, setOverviewView] = useState(false);
   const prevCompleted = useRef(0);
   const autoSavedRef = useRef({});
 
@@ -690,14 +745,242 @@ function App() {
     setShowEmailBanner(true);
   };
 
-  const exportData = () => {
-    const blob = new Blob([JSON.stringify(log, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `workout-log-${tk}.json`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const sessionHasData = Object.keys(session).length > 0;
+
+  // Overview view (cross-exercise + bodyweight)
+  if (overviewView) {
+    const openExerciseHistory = (exId, meta) => {
+      if (meta?.dayIndex != null) setActiveDay(meta.dayIndex);
+      setHistoryView(exId);
+      setShowAllHistory(false);
+      setOverviewView(false);
+    };
+
+    // Bodyweight series (chronological)
+    const bwDates = Object.keys(log.bodyweight || {}).sort();
+    const bwData = bwDates
+      .map(d => ({ date: d, value: parseFloat(log.bodyweight[d]) || 0 }))
+      .filter(d => d.value > 0);
+
+    const periodDelta = (data, days) => {
+      if (data.length < 2) return null;
+      const cutoff = Date.now() - days * 86400 * 1000;
+      const older = data.filter(d => new Date(d.date).getTime() <= cutoff);
+      if (older.length === 0) return null;
+      const old = older[older.length - 1].value;
+      const current = data[data.length - 1].value;
+      return computeDelta(current, old);
+    };
+
+    const bwSummary = bwData.length > 0 ? {
+      current: bwData[bwData.length - 1].value,
+      currentDate: bwData[bwData.length - 1].date,
+      d30: periodDelta(bwData, 30),
+      d90: periodDelta(bwData, 90),
+      allTime: bwData.length >= 2 ? computeDelta(bwData[bwData.length - 1].value, bwData[0].value) : null,
+      pr: bwData.reduce((a, b) => b.value > a.value ? b : a, bwData[0]),
+      lo: bwData.reduce((a, b) => b.value < a.value ? b : a, bwData[0]),
+    } : null;
+
+    // Per-exercise data summaries
+    const buildSeries = (exId, scope, dayId) => {
+      const points = [];
+      for (const sKey of Object.keys(log.sessions).sort()) {
+        if (scope === "day" && !sKey.endsWith(`-${dayId}`)) continue;
+        const data = log.sessions[sKey]?.[exId];
+        if (!data) continue;
+        if (!Object.keys(data).some(k => /^\d+$/.test(k))) continue;
+        // pick weight-based metric if any weight present, else reps
+        const maxW = computeMetric(data, "top");
+        const val = maxW > 0 ? maxW : computeMetric(data, "reps");
+        if (val > 0) points.push({ date: sKey.slice(0,10), value: val, isWeight: maxW > 0 });
+      }
+      return points;
+    };
+
+    // Gather all exercise ids that have at least one logged set
+    const allIds = new Set();
+    for (const sKey in log.sessions) {
+      const s = log.sessions[sKey];
+      if (!s) continue;
+      for (const id of Object.keys(s)) {
+        if (id.startsWith("_")) continue;
+        const v = s[id];
+        if (typeof v !== "object" || v === null) continue;
+        if (Object.keys(v).some(k => /^\d+$/.test(k))) allIds.add(id);
+      }
+    }
+
+    // Group: primaries by day, "other" for alts/accessories
+    const dayGroups = DAYS.map(d => ({
+      day: d,
+      rows: d.exercises
+        .filter(ex => allIds.has(ex.id))
+        .map(ex => {
+          const series = buildSeries(ex.id, "day", d.id);
+          return { id: ex.id, name: ex.name, meta: { dayIndex: DAYS.indexOf(d) }, color: d.color, series };
+        })
+        .filter(r => r.series.length > 0),
+    })).filter(g => g.rows.length > 0);
+
+    const primaryIdSet = new Set(DAYS.flatMap(d => d.exercises.map(e => e.id)));
+    const otherIds = [...allIds].filter(id => !primaryIdSet.has(id));
+    const otherRows = otherIds.map(id => {
+      const meta = findExerciseMeta(id);
+      const series = buildSeries(id, "global");
+      return { id, name: meta.name, meta, color: "#666", series };
+    }).filter(r => r.series.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const renderSparkline = (series, color) => {
+      if (series.length < 2) return null;
+      const w = 80, h = 22;
+      const values = series.map(d => d.value);
+      const max = Math.max(...values);
+      const min = Math.min(...values);
+      const range = max - min || 1;
+      const pts = series.map((d, i) => {
+        const x = (i / (series.length - 1)) * w;
+        const y = h - 2 - ((d.value - min) / range) * (h - 4);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      });
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
+          <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    };
+
+    const renderBigChart = (series, color) => {
+      if (series.length < 2) return null;
+      const w = 400, h = 160, padL = 44, padR = 12, padT = 14, padB = 28;
+      const innerW = w - padL - padR;
+      const innerH = h - padT - padB;
+      const values = series.map(d => d.value);
+      const maxV = Math.max(...values);
+      const minV = Math.min(...values);
+      const span = maxV - minV;
+      const pad = span * 0.15 || Math.max(1, maxV * 0.05);
+      const step = maxV > 200 ? 5 : maxV > 50 ? 2 : 1;
+      const yMin = Math.max(0, Math.floor((minV - pad) / step) * step);
+      const yMax = Math.ceil((maxV + pad) / step) * step;
+      const yRange = yMax - yMin || 1;
+      const xScale = (i) => series.length <= 1 ? padL + innerW / 2 : padL + (i / (series.length - 1)) * innerW;
+      const yScale = (v) => padT + innerH - ((v - yMin) / yRange) * innerH;
+      const points = series.map((d, i) => ({ x: xScale(i), y: yScale(d.value), value: d.value, date: d.date }));
+      const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+      const gridYs = [yMin, Math.round((yMin + yMax) / 2), yMax];
+      const dotR = series.length > 40 ? 0 : series.length > 20 ? 2 : 3;
+      const xLabelIdxs = series.length >= 3 ? [0, Math.floor(series.length / 2), series.length - 1] : [0, series.length - 1];
+      return (
+        <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }} preserveAspectRatio="xMidYMid meet">
+          {gridYs.map(gy => (
+            <g key={gy}>
+              <line x1={padL} y1={yScale(gy)} x2={padL + innerW} y2={yScale(gy)} stroke="#1F1F1F" strokeWidth="1" />
+              <text x={padL - 6} y={yScale(gy) + 3} fontSize="10" fill="#666" textAnchor="end" fontFamily="monospace">{gy.toLocaleString()}</text>
+            </g>
+          ))}
+          <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          {dotR > 0 && points.map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={dotR} fill={color} stroke="#0F0F0F" strokeWidth="1.5" />
+          ))}
+          {xLabelIdxs.map((idx, i) => {
+            const p = points[idx];
+            if (!p) return null;
+            const anchor = i === 0 ? "start" : i === xLabelIdxs.length - 1 ? "end" : "middle";
+            return <text key={idx} x={p.x} y={h - 8} fontSize="9" fill="#666" textAnchor={anchor} fontFamily="monospace">{p.date.slice(5)}</text>;
+          })}
+        </svg>
+      );
+    };
+
+    const renderRow = (row) => {
+      const last = row.series[row.series.length - 1];
+      const first = row.series[0];
+      const d30 = periodDelta(row.series, 30);
+      const unit = row.series.every(s => !s.isWeight) ? "reps" : "lb";
+      const delta = d30 ?? (row.series.length >= 2 ? computeDelta(last.value, first.value) : null);
+      const deltaColor = !delta ? "#555" : delta.delta > 0 ? "#4ade80" : delta.delta < 0 ? "#f87171" : "#888";
+      return (
+        <button key={row.id} onClick={() => openExerciseHistory(row.id, row.meta)} style={{
+          width: "100%", padding: "10px 12px", background: "#151515", border: "1px solid #222", borderRadius: 8,
+          marginBottom: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#E8E8E8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</div>
+            <div style={{ fontSize: 10, color: "#666", fontFamily: "monospace", marginTop: 2 }}>{row.series.length} session{row.series.length === 1 ? "" : "s"}</div>
+          </div>
+          {renderSparkline(row.series, row.color)}
+          <div style={{ textAlign: "right", fontFamily: "monospace", minWidth: 64 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#E8E8E8" }}>{last.value.toLocaleString()}<span style={{ fontSize: 9, color: "#555", marginLeft: 2 }}>{unit}</span></div>
+            <div style={{ fontSize: 10, color: deltaColor }}>{delta ? `${delta.delta > 0 ? "+" : ""}${Math.round(delta.delta)} (${delta.pct > 0 ? "+" : ""}${delta.pct.toFixed(1)}%)` : "—"}</div>
+          </div>
+        </button>
+      );
+    };
+
+    return (
+      <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 80px" }}>
+        <button onClick={() => setOverviewView(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer", padding: "8px 0" }}>← Back</button>
+        <h2 style={{ margin: "12px 0 16px", fontSize: 20, fontWeight: 700 }}>Overview</h2>
+
+        {/* Bodyweight */}
+        <div style={{ fontSize: 10, color: "#666", letterSpacing: 1, fontFamily: "monospace", marginBottom: 8 }}>BODYWEIGHT</div>
+        {!bwSummary && (
+          <div style={{ background: "#151515", border: "1px solid #222", borderRadius: 10, padding: "16px", marginBottom: 20, color: "#666", fontSize: 13, textAlign: "center" }}>No bodyweight logged yet.</div>
+        )}
+        {bwSummary && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              <div style={{ flex: 1, background: "#151515", border: "1px solid #222", borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>CURRENT</div>
+                <div style={{ fontSize: 18, color: "#E8E8E8", fontWeight: 700, fontFamily: "monospace", marginTop: 2 }}>{bwSummary.current.toFixed(1)}<span style={{ fontSize: 10, color: "#555", marginLeft: 3 }}>lb</span></div>
+                <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace" }}>{bwSummary.currentDate}</div>
+              </div>
+              <div style={{ flex: 1, background: "#151515", border: "1px solid #222", borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>RANGE</div>
+                <div style={{ fontSize: 13, color: "#E8E8E8", fontWeight: 700, fontFamily: "monospace", marginTop: 4 }}>{bwSummary.lo.value.toFixed(1)} – {bwSummary.pr.value.toFixed(1)}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {[{ label: "30d", d: bwSummary.d30 }, { label: "90d", d: bwSummary.d90 }, { label: "all", d: bwSummary.allTime }].map(({ label, d }) => (
+                <div key={label} style={{ flex: 1, background: "#0E0E0E", border: "1px solid " + (d ? "#1F1F1F" : "#1A1A1A"), borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>Δ {label}</div>
+                  <div style={{ fontSize: 13, color: !d ? "#444" : (d.delta < 0 ? "#4ade80" : d.delta > 0 ? "#f87171" : "#888"), fontFamily: "monospace", fontWeight: 700, marginTop: 2 }}>
+                    {!d ? "—" : `${d.delta > 0 ? "+" : ""}${d.delta.toFixed(1)}`}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace" }}>{!d ? "" : `${d.pct > 0 ? "+" : ""}${d.pct.toFixed(1)}%`}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: "#0E0E0E", border: "1px solid #1F1F1F", borderRadius: 10, padding: "10px 6px 6px" }}>
+              {bwData.length >= 2 ? renderBigChart(bwData, "#9AC8FF") : (
+                <div style={{ height: 100, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 12 }}>Log at least 2 bodyweight entries to chart.</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Exercises */}
+        <div style={{ fontSize: 10, color: "#666", letterSpacing: 1, fontFamily: "monospace", marginBottom: 8 }}>EXERCISES</div>
+        {dayGroups.length === 0 && otherRows.length === 0 && (
+          <div style={{ background: "#151515", border: "1px solid #222", borderRadius: 10, padding: 16, color: "#666", fontSize: 13, textAlign: "center" }}>No logged sets yet. Complete a workout to populate this.</div>
+        )}
+        {dayGroups.map(g => (
+          <div key={g.day.id} style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: g.day.color, letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 6, textTransform: "uppercase" }}>{g.day.name} · {g.day.subtitle}</div>
+            {g.rows.map(renderRow)}
+          </div>
+        ))}
+        {otherRows.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: "#888", letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 6, textTransform: "uppercase" }}>Substitutes &amp; accessories</div>
+            {otherRows.map(renderRow)}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // History view
   if (historyView) {
@@ -968,7 +1251,7 @@ function App() {
           <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Strength Tracker</h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={exportData} style={{ background: "#1A1A1A", border: "1px solid #333", color: "#888", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Export</button>
+          <button onClick={() => setOverviewView(true)} title="Cross-exercise history and bodyweight trends" style={{ background: "#1A1A1A", border: "1px solid #2A2A3A", color: "#9AC", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Overview</button>
           <button onClick={syncWithVault} title="Push local sessions to the vault and pull any missing ones back" style={{ background: "#1A1A1A", border: "1px solid #2A3A4A", color: "#7AB", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>{syncStatus?.phase === "pushing" ? "Pushing…" : syncStatus?.phase === "pulling" ? "Pulling…" : "Sync"}</button>
           <button onClick={generateMockData} title="Load 30 mock sessions across the past ~10 weeks" style={{ background: "#1A1A1A", border: "1px solid #2A3A2A", color: "#6A8" , borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Demo</button>
           <button onClick={clearAllData} title="Clear all local data" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
