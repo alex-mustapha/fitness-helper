@@ -227,136 +227,12 @@ const applyCustom = (slot, customMap) => {
 };
 
 const SK = "workout-log-v1";
-const USER_EMAIL = "kalinowski89@gmail.com";
 const load = () => { try { const d = JSON.parse(localStorage.getItem(SK)) || {}; if (!d.sessions) d.sessions = {}; if (!d.bodyweight) d.bodyweight = {}; return d; } catch { return { sessions: {}, bodyweight: {} }; } };
 const save = (d) => { try { localStorage.setItem(SK, JSON.stringify(d)); } catch(e) { console.error(e); } };
 
 const fmtDate = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const parseRest = (s) => { const m = s.match(/(\d+)/); if (!m) return 120; const n = parseInt(m[1]); return s.includes("min") ? n * 60 : n; };
-
-function buildWorkoutEmail(day, session, log, tk) {
-  const lines = [];
-  lines.push("WORKOUT LOG");
-  lines.push("Date: " + tk);
-  lines.push("Program: 3-Day Full Body Strength (Intermediate)");
-  lines.push("Session: " + day.name + " - " + day.subtitle);
-  lines.push("");
-  lines.push("--- EXERCISES ---");
-  lines.push("");
-
-  const omitted = session._omitted || {};
-  const swapped = session._swapped || {};
-  const accessoryIds = session._accessories || [];
-  const customMap = session._custom || {};
-  const ended = !!session._ended;
-
-  const omittedExercises = day.exercises.filter(ex => omitted[ex.id] && !swapped[ex.id]);
-  const includedSlots = day.exercises.map(p => {
-    if (omitted[p.id]) return null;
-    let slot;
-    if (swapped[p.id]) {
-      const alt = resolveAlt(p, swapped[p.id]);
-      slot = alt ? { ...alt, _swapFor: p.name, _scope: "global" } : { ...p, _scope: "day" };
-    } else {
-      slot = { ...p, _scope: "day" };
-    }
-    return applyCustom(slot, customMap);
-  }).filter(Boolean);
-
-  const accessorySlots = accessoryIds
-    .map(id => (ACCESSORIES[day.id] || []).find(a => a.id === id))
-    .filter(Boolean)
-    .map(a => applyCustom({ ...a, _accessory: true, _scope: "global" }, customMap));
-
-  const allSlots = [...includedSlots, ...accessorySlots];
-
-  allSlots.forEach((ex) => {
-    const exData = session[ex.id] || {};
-    const label = ex._swapFor ? `${ex.name} (in place of ${ex._swapFor})` : (ex._accessory ? `${ex.name} (accessory)` : ex.name);
-    lines.push(label + " (Target: " + ex.sets + " x " + ex.reps + ")");
-
-    // Current session sets
-    const setLines = [];
-    for (let i = 0; i < ex.sets; i++) {
-      const sd = exData[i];
-      if (sd && sd.done) {
-        setLines.push("  Set " + (i+1) + ": " + (sd.weight || "BW") + " lb x " + (sd.reps || "?") + " reps");
-      } else if (!ended) {
-        setLines.push("  Set " + (i+1) + ": skipped");
-      }
-    }
-    lines.push(...setLines);
-
-    // Previous session comparison: day-scoped for primaries, global for alts/accessories
-    const prevKeys = Object.keys(log.sessions)
-      .filter(k => k !== `${tk}-${day.id}`)
-      .filter(k => ex._scope === "day" ? k.endsWith(`-${day.id}`) : true)
-      .sort().reverse();
-    for (const k of prevKeys) {
-      if (log.sessions[k]?.[ex.id]) {
-        const prev = log.sessions[k][ex.id];
-        const prevSets = Object.keys(prev).filter(s => /^\d+$/.test(s)).sort((a,b)=>a-b)
-          .map(si => (prev[si].weight||"?") + "x" + (prev[si].reps||"?")).join(", ");
-        if (prevSets) {
-          lines.push("  Previous (" + k.slice(0,10) + "): " + prevSets);
-          break;
-        }
-      }
-    }
-    lines.push("");
-  });
-
-  // Volume summary
-  lines.push("--- VOLUME SUMMARY ---");
-  let totalWeight = 0;
-  let totalReps = 0;
-  let totalSetsCompleted = 0;
-  allSlots.forEach(ex => {
-    const exData = session[ex.id] || {};
-    for (let i = 0; i < ex.sets; i++) {
-      const sd = exData[i];
-      if (sd && sd.done) {
-        totalSetsCompleted++;
-        const w = parseFloat(sd.weight) || 0;
-        const r = parseInt(sd.reps) || 0;
-        totalReps += r;
-        totalWeight += w * r;
-      }
-    }
-  });
-  lines.push("Sets completed: " + totalSetsCompleted + "/" + allSlots.reduce((a,e) => a + e.sets, 0));
-  lines.push("Total reps: " + totalReps);
-  lines.push("Total volume: " + totalWeight.toLocaleString() + " lb");
-  if (omittedExercises.length > 0) {
-    lines.push("Omitted: " + omittedExercises.map(e => e.name).join(", "));
-  }
-  lines.push("");
-
-  // Bodyweight
-  const todayBW = log.bodyweight?.[tk];
-  if (todayBW) {
-    lines.push("--- BODYWEIGHT ---");
-    lines.push("Today: " + todayBW + " lb");
-    const bwDates = Object.keys(log.bodyweight).filter(d => d !== tk).sort().reverse();
-    if (bwDates.length > 0) {
-      lines.push("Previous (" + bwDates[0] + "): " + log.bodyweight[bwDates[0]] + " lb");
-      const diff = (parseFloat(todayBW) - parseFloat(log.bodyweight[bwDates[0]])).toFixed(1);
-      lines.push("Change: " + (diff > 0 ? "+" : "") + diff + " lb");
-    }
-    if (bwDates.length >= 6) {
-      const oldest = bwDates[bwDates.length - 1];
-      const totalDiff = (parseFloat(todayBW) - parseFloat(log.bodyweight[oldest])).toFixed(1);
-      lines.push("Since " + oldest + ": " + (totalDiff > 0 ? "+" : "") + totalDiff + " lb");
-    }
-    lines.push("");
-  }
-
-  lines.push("--- PASTE INTO CLAUDE FOR FEEDBACK ---");
-  lines.push("Ask: Review my workout log above. Flag any exercises where I should increase or decrease weight next session. Note any volume or rep range issues." + (todayBW ? " Also comment on my bodyweight trend and whether my rate of loss is healthy given my training." : "") + " Suggest what to focus on for my next " + day.name + " session.");
-
-  return lines.join("\n");
-}
 
 function App() {
   const [activeDay, setActiveDay] = useState(0);
@@ -373,7 +249,10 @@ function App() {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [editingScheme, setEditingScheme] = useState(null);
   const [draftScheme, setDraftScheme] = useState({ sets: "", reps: "" });
+  const [saveStatus, setSaveStatus] = useState({});
+  const [syncStatus, setSyncStatus] = useState(null);
   const prevCompleted = useRef(0);
+  const autoSavedRef = useRef({});
 
   const persist = useCallback((fn) => {
     setLog(prev => {
@@ -427,7 +306,7 @@ function App() {
   const ended = !!session._ended;
   const sessionComplete = (completedSets === totalSets && totalSets > 0) || ended;
 
-  // Detect session completion
+  // Detect session completion -> show banner + auto-save once
   useEffect(() => {
     if (sessionComplete && prevCompleted.current < totalSets && !emailSent[sk]) {
       setShowEmailBanner(true);
@@ -435,33 +314,72 @@ function App() {
     prevCompleted.current = completedSets;
   }, [completedSets, sessionComplete]);
 
-  const openEmailDraft = () => {
-    const body = buildWorkoutEmail(day, session, log, tk);
-    const subject = "Workout Log - " + day.name + " " + day.subtitle + " - " + tk;
-    const to = USER_EMAIL;
-    window.location.href = "mailto:" + encodeURIComponent(to) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-    setEmailSent(prev => ({ ...prev, [sk]: true }));
-    setShowEmailBanner(false);
-  };
+  useEffect(() => {
+    if (!sessionComplete || autoSavedRef.current[sk] || Object.keys(session).length === 0) return;
+    autoSavedRef.current[sk] = true;
+    saveToVault(sk, session, log.bodyweight, { silent: true });
+  }, [sessionComplete, sk, session, log.bodyweight, saveToVault]);
 
-  const copyToClipboard = () => {
-    const body = buildWorkoutEmail(day, session, log, tk);
-    navigator.clipboard.writeText(body).then(() => {
-      setEmailSent(prev => ({ ...prev, [sk]: true }));
-      setShowEmailBanner(false);
-      alert("Workout log copied to clipboard!");
-    }).catch(() => {
-      // Fallback
-      const ta = document.createElement("textarea");
-      ta.value = body;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      setEmailSent(prev => ({ ...prev, [sk]: true }));
-      setShowEmailBanner(false);
-      alert("Workout log copied to clipboard!");
-    });
+  const saveToVault = useCallback(async (key, data, bw, opts = {}) => {
+    const targetKey = key || sk;
+    const targetData = data || session;
+    const targetBw = bw !== undefined ? bw : log.bodyweight;
+    if (!targetKey || !targetData || Object.keys(targetData).length === 0) return;
+    setSaveStatus(s => ({ ...s, [targetKey]: "saving" }));
+    try {
+      const resp = await fetch("/api/save-session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionKey: targetKey, sessionData: targetData, bodyweight: targetBw }),
+      });
+      if (!resp.ok) throw new Error((await resp.text()) || `HTTP ${resp.status}`);
+      setSaveStatus(s => ({ ...s, [targetKey]: "saved" }));
+      if (!opts.silent) {
+        setEmailSent(prev => ({ ...prev, [targetKey]: true }));
+      }
+    } catch (e) {
+      setSaveStatus(s => ({ ...s, [targetKey]: `error: ${e.message}` }));
+    }
+  }, [sk, session, log.bodyweight]);
+
+  const syncWithVault = async () => {
+    if (!confirm("Sync with vault now? Local sessions will be pushed, then missing remote sessions will be merged back in.")) return;
+    setSyncStatus({ phase: "pushing" });
+    try {
+      // Push all local sessions
+      const sessionKeys = Object.keys(log.sessions);
+      let pushed = 0;
+      for (const k of sessionKeys) {
+        const data = log.sessions[k];
+        if (!data || Object.keys(data).length === 0) continue;
+        const resp = await fetch("/api/save-session", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionKey: k, sessionData: data, bodyweight: log.bodyweight }),
+        });
+        if (resp.ok) pushed++;
+      }
+      setSyncStatus({ phase: "pulling" });
+      // Pull remote
+      const resp = await fetch("/api/get-data");
+      if (!resp.ok) throw new Error((await resp.text()) || `HTTP ${resp.status}`);
+      const remote = await resp.json();
+      let added = 0;
+      persist(prev => {
+        const n = JSON.parse(JSON.stringify(prev));
+        for (const [k, v] of Object.entries(remote.sessions || {})) {
+          if (!n.sessions[k]) { n.sessions[k] = v; added++; }
+        }
+        for (const [d, w] of Object.entries(remote.bodyweight || {})) {
+          if (!n.bodyweight[d]) { n.bodyweight[d] = w; }
+        }
+        return n;
+      });
+      setSyncStatus({ phase: "done", pushed, pulled: added, remoteTotal: remote.meta?.sessionCount ?? 0 });
+      setTimeout(() => setSyncStatus(null), 4000);
+    } catch (e) {
+      setSyncStatus({ phase: "error", error: e.message });
+    }
   };
 
   const updateSet = (exId, si, field, value) => {
@@ -1051,33 +969,51 @@ function App() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={exportData} style={{ background: "#1A1A1A", border: "1px solid #333", color: "#888", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Export</button>
+          <button onClick={syncWithVault} title="Push local sessions to the vault and pull any missing ones back" style={{ background: "#1A1A1A", border: "1px solid #2A3A4A", color: "#7AB", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>{syncStatus?.phase === "pushing" ? "Pushing…" : syncStatus?.phase === "pulling" ? "Pulling…" : "Sync"}</button>
           <button onClick={generateMockData} title="Load 30 mock sessions across the past ~10 weeks" style={{ background: "#1A1A1A", border: "1px solid #2A3A2A", color: "#6A8" , borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Demo</button>
-          <button onClick={clearAllData} title="Clear all data" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
+          <button onClick={clearAllData} title="Clear all local data" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
         </div>
       </div>
 
-      {/* Session Complete Banner */}
-      {(showEmailBanner || (sessionComplete && !emailSent[sk])) && (
-        <div className="email-banner">
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#4ade80", marginBottom: 6 }}>Session Complete! 💪</div>
-          <div style={{ fontSize: 13, color: "#999", marginBottom: 14 }}>Send yourself a workout summary to paste into Claude for feedback.</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={openEmailDraft} style={{ flex: 1, padding: "12px", background: "#4ade80", border: "none", borderRadius: 8, color: "#0F0F0F", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              Email Summary
-            </button>
-            <button onClick={copyToClipboard} style={{ padding: "12px 16px", background: "#333", border: "none", borderRadius: 8, color: "#CCC", fontSize: 13, cursor: "pointer" }}>
-              Copy
-            </button>
-          </div>
-          <button onClick={() => { setShowEmailBanner(false); setEmailSent(prev => ({...prev, [sk]: true})); }} style={{ background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer", marginTop: 10, textDecoration: "underline", width: "100%" }}>Dismiss</button>
+      {/* Sync status toast */}
+      {syncStatus?.phase === "done" && (
+        <div style={{ background: "#0E2A1E", border: "1px solid #2A5A3A", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#8DC", fontFamily: "monospace" }}>
+          Sync complete · pushed {syncStatus.pushed} · pulled {syncStatus.pulled} new · vault has {syncStatus.remoteTotal} total
+        </div>
+      )}
+      {syncStatus?.phase === "error" && (
+        <div style={{ background: "#2A0E0E", border: "1px solid #5A2A2A", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#F88", fontFamily: "monospace" }}>
+          Sync failed: {syncStatus.error}
         </div>
       )}
 
-      {/* Manual email button when session is done and banner dismissed */}
+      {/* Session Complete Banner */}
+      {(showEmailBanner || (sessionComplete && !emailSent[sk])) && (() => {
+        const status = saveStatus[sk];
+        const saving = status === "saving";
+        const saved = status === "saved";
+        const errored = typeof status === "string" && status.startsWith("error");
+        return (
+          <div className="email-banner">
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#4ade80", marginBottom: 6 }}>Session Complete! 💪</div>
+            <div style={{ fontSize: 13, color: "#999", marginBottom: 14 }}>
+              {saving ? "Saving to vault…" : saved ? "Saved to vault ✓" : errored ? "Save failed — tap to retry." : "Saving your workout to permanent storage."}
+            </div>
+            <button onClick={() => saveToVault(sk, session, log.bodyweight)} disabled={saving} style={{ width: "100%", padding: "12px", background: saved ? "#1F3A28" : "#4ade80", border: "none", borderRadius: 8, color: saved ? "#8DC" : "#0F0F0F", fontSize: 14, fontWeight: 700, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saving…" : saved ? "Saved ✓ — save again" : errored ? "Retry save" : "Save to Vault"}
+            </button>
+            {errored && <div style={{ fontSize: 11, color: "#F88", marginTop: 6, fontFamily: "monospace" }}>{status.replace("error: ", "")}</div>}
+            <button onClick={() => { setShowEmailBanner(false); setEmailSent(prev => ({...prev, [sk]: true})); }} style={{ background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer", marginTop: 10, textDecoration: "underline", width: "100%" }}>Dismiss</button>
+          </div>
+        );
+      })()}
+
+      {/* Manual save button when banner dismissed */}
       {sessionComplete && emailSent[sk] && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          <button onClick={openEmailDraft} style={{ flex: 1, padding: "10px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#888", fontSize: 12, cursor: "pointer" }}>📧 Re-send Summary</button>
-          <button onClick={copyToClipboard} style={{ padding: "10px 14px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#888", fontSize: 12, cursor: "pointer" }}>📋 Copy</button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
+          <button onClick={() => saveToVault(sk, session, log.bodyweight)} style={{ flex: 1, padding: "10px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#888", fontSize: 12, cursor: "pointer" }}>
+            {saveStatus[sk] === "saving" ? "Saving…" : saveStatus[sk] === "saved" ? "Saved ✓ — save again" : "Save to Vault"}
+          </button>
         </div>
       )}
 
