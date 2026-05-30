@@ -97,7 +97,11 @@ function buildWorkoutEmail(day, session, log, tk) {
   lines.push("--- EXERCISES ---");
   lines.push("");
 
-  day.exercises.forEach((ex) => {
+  const omitted = session._omitted || {};
+  const includedExercises = day.exercises.filter(ex => !omitted[ex.id]);
+  const omittedExercises = day.exercises.filter(ex => omitted[ex.id]);
+
+  includedExercises.forEach((ex) => {
     const exData = session[ex.id] || {};
     lines.push(ex.name + " (Target: " + ex.sets + " x " + ex.reps + ")");
 
@@ -134,7 +138,7 @@ function buildWorkoutEmail(day, session, log, tk) {
   let totalWeight = 0;
   let totalReps = 0;
   let totalSetsCompleted = 0;
-  day.exercises.forEach(ex => {
+  includedExercises.forEach(ex => {
     const exData = session[ex.id] || {};
     for (let i = 0; i < ex.sets; i++) {
       const sd = exData[i];
@@ -147,9 +151,12 @@ function buildWorkoutEmail(day, session, log, tk) {
       }
     }
   });
-  lines.push("Sets completed: " + totalSetsCompleted + "/" + day.exercises.reduce((a,e) => a + e.sets, 0));
+  lines.push("Sets completed: " + totalSetsCompleted + "/" + includedExercises.reduce((a,e) => a + e.sets, 0));
   lines.push("Total reps: " + totalReps);
   lines.push("Total volume: " + totalWeight.toLocaleString() + " lb");
+  if (omittedExercises.length > 0) {
+    lines.push("Omitted: " + omittedExercises.map(e => e.name).join(", "));
+  }
   lines.push("");
 
   // Bodyweight
@@ -207,9 +214,12 @@ function App() {
   const tk = todayKey();
   const sk = `${tk}-${day.id}`;
   const session = log.sessions[sk] || {};
+  const omitted = session._omitted || {};
+  const isOmitted = (exId) => !!omitted[exId];
 
-  const totalSets = day.exercises.reduce((a, e) => a + e.sets, 0);
-  const completedSets = day.exercises.reduce((a, ex) => a + Object.values(session[ex.id] || {}).filter(s => s.done).length, 0);
+  const includedExercises = day.exercises.filter(ex => !isOmitted(ex.id));
+  const totalSets = includedExercises.reduce((a, e) => a + e.sets, 0);
+  const completedSets = includedExercises.reduce((a, ex) => a + Object.values(session[ex.id] || {}).filter(s => s.done).length, 0);
   const sessionComplete = completedSets === totalSets && totalSets > 0;
 
   // Detect session completion
@@ -265,6 +275,18 @@ function App() {
     setActiveSet(null);
     setRestTimer(`${exId}-${si}`);
     setRestLeft(restSec);
+  };
+
+  const toggleOmit = (exId) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk]._omitted) n.sessions[sk]._omitted = {};
+      if (n.sessions[sk]._omitted[exId]) delete n.sessions[sk]._omitted[exId];
+      else n.sessions[sk]._omitted[exId] = true;
+      return n;
+    });
+    if (activeSet?.startsWith(`${exId}-`)) setActiveSet(null);
   };
 
   const getLast = (exId) => {
@@ -433,6 +455,19 @@ function App() {
         const last = getLast(ex.id);
         const allDone = Array.from({ length: ex.sets }, (_, i) => exData[i]?.done).every(Boolean);
         const restSec = parseRest(ex.rest);
+        const omittedEx = isOmitted(ex.id);
+
+        if (omittedEx) {
+          return (
+            <div key={ex.id} style={{ background: "#101010", border: "1px dashed #2A2A2A", borderRadius: 14, marginBottom: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.6 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#666", textDecoration: "line-through" }}>{ex.name}</div>
+                <div style={{ fontSize: 10, color: "#555", fontFamily: "monospace", marginTop: 2, letterSpacing: 1 }}>OMITTED FROM REPORT</div>
+              </div>
+              <button onClick={() => toggleOmit(ex.id)} style={{ background: "#222", border: "none", color: "#AAA", borderRadius: 6, padding: "6px 12px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Include</button>
+            </div>
+          );
+        }
 
         return (
           <div key={ex.id} style={{ background: allDone ? `${day.color}08` : "#151515", border: `1px solid ${allDone ? `${day.color}30` : "#222"}`, borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
@@ -441,7 +476,10 @@ function App() {
                 <div style={{ fontSize: 15, fontWeight: 600, color: allDone ? "#888" : "#E8E8E8" }}>{ex.name}</div>
                 <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginTop: 2 }}>{ex.sets} x {ex.reps} · rest {ex.rest}</div>
               </div>
-              <button onClick={() => setHistoryView(ex.id)} style={{ background: "#222", border: "none", color: "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>History</button>
+              <div style={{ display: "flex", gap: 4 }}>
+                <button onClick={() => toggleOmit(ex.id)} title="Omit from report" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Omit</button>
+                <button onClick={() => setHistoryView(ex.id)} style={{ background: "#222", border: "none", color: "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>History</button>
+              </div>
             </div>
 
             {last && (
