@@ -217,6 +217,15 @@ const resolveAlt = (primary, altId) => {
   };
 };
 
+const applyCustom = (slot, customMap) => {
+  const c = customMap?.[slot.id];
+  if (!c) return slot;
+  const out = { ...slot, _customized: true };
+  if (c.sets != null) out.sets = c.sets;
+  if (c.reps != null) out.reps = c.reps;
+  return out;
+};
+
 const SK = "workout-log-v1";
 const USER_EMAIL = "kalinowski89@gmail.com";
 const load = () => { try { const d = JSON.parse(localStorage.getItem(SK)) || {}; if (!d.sessions) d.sessions = {}; if (!d.bodyweight) d.bodyweight = {}; return d; } catch { return { sessions: {}, bodyweight: {} }; } };
@@ -239,23 +248,26 @@ function buildWorkoutEmail(day, session, log, tk) {
   const omitted = session._omitted || {};
   const swapped = session._swapped || {};
   const accessoryIds = session._accessories || [];
+  const customMap = session._custom || {};
   const ended = !!session._ended;
 
   const omittedExercises = day.exercises.filter(ex => omitted[ex.id] && !swapped[ex.id]);
   const includedSlots = day.exercises.map(p => {
     if (omitted[p.id]) return null;
+    let slot;
     if (swapped[p.id]) {
       const alt = resolveAlt(p, swapped[p.id]);
-      if (alt) return { ...alt, _swapFor: p.name, _scope: "global" };
-      return { ...p, _scope: "day" };
+      slot = alt ? { ...alt, _swapFor: p.name, _scope: "global" } : { ...p, _scope: "day" };
+    } else {
+      slot = { ...p, _scope: "day" };
     }
-    return { ...p, _scope: "day" };
+    return applyCustom(slot, customMap);
   }).filter(Boolean);
 
   const accessorySlots = accessoryIds
     .map(id => (ACCESSORIES[day.id] || []).find(a => a.id === id))
     .filter(Boolean)
-    .map(a => ({ ...a, _accessory: true, _scope: "global" }));
+    .map(a => applyCustom({ ...a, _accessory: true, _scope: "global" }, customMap));
 
   const allSlots = [...includedSlots, ...accessorySlots];
 
@@ -359,6 +371,8 @@ function App() {
   const [showAccessoryPicker, setShowAccessoryPicker] = useState(false);
   const [historyMetric, setHistoryMetric] = useState("top");
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [editingScheme, setEditingScheme] = useState(null);
+  const [draftScheme, setDraftScheme] = useState({ sets: "", reps: "" });
   const prevCompleted = useRef(0);
 
   const persist = useCallback((fn) => {
@@ -383,16 +397,20 @@ function App() {
   const omitted = session._omitted || {};
   const swapped = session._swapped || {};
   const accessoryIds = session._accessories || [];
+  const customMapForRender = session._custom || {};
   const isOmitted = (exId) => !!omitted[exId];
   const getSwap = (exId) => swapped[exId] || null;
 
   const resolveSlot = (primary) => {
     const swapId = getSwap(primary.id);
+    let slot;
     if (swapId) {
       const alt = resolveAlt(primary, swapId);
-      if (alt) return { ...alt, _swapFor: primary, _scope: "day" };
+      slot = alt ? { ...alt, _swapFor: primary, _scope: "global" } : { ...primary, _scope: "day" };
+    } else {
+      slot = { ...primary, _scope: "day" };
     }
-    return { ...primary, _scope: "day" };
+    return applyCustom(slot, customMapForRender);
   };
 
   const includedSlots = day.exercises
@@ -401,7 +419,7 @@ function App() {
   const accessorySlots = accessoryIds
     .map(id => (ACCESSORIES[day.id] || []).find(a => a.id === id))
     .filter(Boolean)
-    .map(a => ({ ...a, _accessory: true, _scope: "global" }));
+    .map(a => applyCustom({ ...a, _accessory: true, _scope: "global" }, customMapForRender));
   const renderSlots = [...includedSlots, ...accessorySlots];
 
   const totalSets = renderSlots.reduce((a, e) => a + e.sets, 0);
@@ -520,6 +538,41 @@ function App() {
       return n;
     });
     if (activeSet?.startsWith(`${accId}-`)) setActiveSet(null);
+  };
+
+  const startSchemeEdit = (slot) => {
+    setEditingScheme(slot.id);
+    setDraftScheme({ sets: String(slot.sets), reps: String(slot.reps) });
+  };
+
+  const cancelSchemeEdit = () => setEditingScheme(null);
+
+  const saveSchemeEdit = (slotId) => {
+    const setsNum = parseInt(draftScheme.sets, 10);
+    const repsStr = String(draftScheme.reps).trim();
+    if (isNaN(setsNum) || setsNum < 1 || setsNum > 20 || !repsStr) {
+      alert("Sets must be 1-20 and reps must not be blank.");
+      return;
+    }
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk]._custom) n.sessions[sk]._custom = {};
+      n.sessions[sk]._custom[slotId] = { sets: setsNum, reps: repsStr };
+      return n;
+    });
+    setEditingScheme(null);
+  };
+
+  const clearSchemeCustom = (slotId) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (n.sessions[sk]?._custom) {
+        delete n.sessions[sk]._custom[slotId];
+      }
+      return n;
+    });
+    setEditingScheme(null);
   };
 
   const getLast = (exId, scope = "day") => {
@@ -1055,7 +1108,26 @@ function App() {
                     {accessory && <span style={{ fontSize: 9, color: "#888", background: "#1A1A1A", border: "1px solid #2A2A2A", padding: "2px 6px", borderRadius: 4, letterSpacing: 1, fontFamily: "monospace" }}>ACC</span>}
                   </div>
                   {swapId && <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>in place of {primary.name}</div>}
-                  <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginTop: 2 }}>{slot.sets} × {slot.reps} · rest {slot.rest}</div>
+                  {editingScheme === slot.id ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                      <input type="number" inputMode="numeric" min="1" max="20" value={draftScheme.sets}
+                        onChange={e => setDraftScheme(d => ({ ...d, sets: e.target.value }))}
+                        style={{ width: 48, padding: "6px 8px", background: "#1A1A1A", border: `1px solid ${day.color}`, borderRadius: 5, color: "#E8E8E8", fontSize: 13, fontFamily: "monospace", outline: "none" }} />
+                      <span style={{ fontSize: 12, color: "#666" }}>×</span>
+                      <input type="text" value={draftScheme.reps}
+                        onChange={e => setDraftScheme(d => ({ ...d, reps: e.target.value }))}
+                        placeholder="reps"
+                        style={{ width: 80, padding: "6px 8px", background: "#1A1A1A", border: `1px solid ${day.color}`, borderRadius: 5, color: "#E8E8E8", fontSize: 13, fontFamily: "monospace", outline: "none" }} />
+                      <button onClick={() => saveSchemeEdit(slot.id)} style={{ background: day.color, border: "none", color: "#fff", borderRadius: 5, padding: "6px 10px", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Save</button>
+                      <button onClick={cancelSchemeEdit} style={{ background: "#333", border: "none", color: "#999", borderRadius: 5, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "#666", fontFamily: "monospace", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>{slot.sets} × {slot.reps} · rest {slot.rest}{slot._customized ? " *" : ""}</span>
+                      <button onClick={() => startSchemeEdit(slot)} title="Edit sets/reps" style={{ background: "transparent", border: "none", color: "#555", fontSize: 12, cursor: "pointer", padding: "0 2px" }}>✎</button>
+                      {slot._customized && <button onClick={() => clearSchemeCustom(slot.id)} title="Reset to default" style={{ background: "transparent", border: "none", color: "#555", fontSize: 11, cursor: "pointer", padding: "0 2px" }}>↺</button>}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 4 }}>
                   {primary && <button onClick={() => setSwapPickerFor(showPicker ? null : primary.id)} style={{ background: showPicker ? `${day.color}25` : "#1A1A1A", border: `1px solid ${showPicker ? day.color : "#2A2A2A"}`, color: showPicker ? day.color : "#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Sub ▾</button>}
