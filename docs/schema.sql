@@ -45,6 +45,13 @@ alter table bodyweight   enable row level security;
 alter table food_log     enable row level security;
 alter table diet_targets enable row level security;
 
+-- Idempotent: drop-then-create so re-running this file (e.g. when sharing a
+-- Supabase project with an earlier app) never errors on an existing policy.
+drop policy if exists "anon all sessions"     on sessions;
+drop policy if exists "anon all bodyweight"   on bodyweight;
+drop policy if exists "anon all food_log"     on food_log;
+drop policy if exists "anon all diet_targets" on diet_targets;
+
 create policy "anon all sessions"     on sessions     for all to anon using (true) with check (true);
 create policy "anon all bodyweight"   on bodyweight   for all to anon using (true) with check (true);
 create policy "anon all food_log"     on food_log     for all to anon using (true) with check (true);
