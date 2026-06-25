@@ -947,7 +947,7 @@ function EatView({ targets, foodToday, onAdd, onRemove, onClear, onSetTargets, c
 }
 
 // ─── Today tab (the synergy view) ────────────────────────────────────
-function TodayView({ log, tk, targets, foodToday, currentUser, setCurrentUser, activeDate, setActiveDate, onLogWeight, onGoTrain, onGoEat, onPickDay }) {
+function TodayView({ log, tk, targets, foodToday, currentUser, setCurrentUser, activeDate, setActiveDate, onLogWeight, onGoTrain, onGoEat, onSelectDay, onLogDay }) {
   const [bw, setBw] = useState((log.bodyweight && log.bodyweight[tk]) || "");
   useEffect(() => { setBw((log.bodyweight && log.bodyweight[tk]) || ""); }, [tk, log.bodyweight]);
   const [nudgeDismissed, setNudgeDismissed] = useState("");
@@ -1019,14 +1019,14 @@ function TodayView({ log, tk, targets, foodToday, currentUser, setCurrentUser, a
           <span style={{ fontSize: 11, color: "#888", fontFamily: "monospace" }}>Last 7 days</span>
           <DateNav activeDate={activeDate} setActiveDate={setActiveDate} />
         </div>
-        <WeekStrip log={log} activeDate={activeDate} onPick={onPickDay} />
+        <WeekStrip log={log} activeDate={activeDate} onPick={onSelectDay} />
       </div>
 
       {missedDay && nudgeDismissed !== missedDay && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#241B0C", border: "1px solid #4A3A1A", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
           <span style={{ fontSize: 18 }}>📋</span>
           <div style={{ flex: 1, fontSize: 13, color: "#f2c98a" }}>You haven't logged <b>{fmtDate(parseKey(missedDay))}</b> yet.</div>
-          <button onClick={() => onPickDay(missedDay)} style={{ background: "#f2a93b", color: "#0F0F0F", border: "none", borderRadius: 7, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Log it</button>
+          <button onClick={() => onLogDay(missedDay)} style={{ background: "#f2a93b", color: "#0F0F0F", border: "none", borderRadius: 7, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Log it</button>
           <button onClick={() => setNudgeDismissed(missedDay)} title="Dismiss" style={{ background: "none", border: "none", color: "#9A7B4A", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
       )}
@@ -1572,7 +1572,7 @@ function App() {
     <BottomTabs active="eat" onChange={setActiveTab} />
   </>);
   if (activeTab === "today") return (<>
-    <TodayView log={log} tk={tk} targets={dietTargets} foodToday={foodToday} currentUser={currentUser} setCurrentUser={setCurrentUser} activeDate={activeDate} setActiveDate={setActiveDate} onLogWeight={logBodyweight} onGoTrain={() => setActiveTab("train")} onGoEat={() => setActiveTab("eat")} onPickDay={(k) => { setActiveDate(k); setActiveTab("eat"); }} />
+    <TodayView log={log} tk={tk} targets={dietTargets} foodToday={foodToday} currentUser={currentUser} setCurrentUser={setCurrentUser} activeDate={activeDate} setActiveDate={setActiveDate} onLogWeight={logBodyweight} onGoTrain={() => setActiveTab("train")} onGoEat={() => setActiveTab("eat")} onSelectDay={(k) => setActiveDate(k)} onLogDay={(k) => { setActiveDate(k); setActiveTab("eat"); }} />
     <BottomTabs active="today" onChange={setActiveTab} />
   </>);
 
