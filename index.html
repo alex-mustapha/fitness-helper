@@ -372,11 +372,13 @@ const migrateLegacy = (u) => {
   } catch {}
 };
 
-// Static user list (no login). Add users via the header dropdown as needed.
-const USERS_KEY = "st-users";
+// Static user list (no login). Add a user by editing this array, then redeploy.
+const USERS = ["alex"];
 const CURRENT_USER_KEY = "st-current-user";
-const loadUsers = () => { try { const u = JSON.parse(localStorage.getItem(USERS_KEY)); return Array.isArray(u) && u.length ? u : ["alex"]; } catch { return ["alex"]; } };
-const loadCurrentUser = () => localStorage.getItem(CURRENT_USER_KEY) || "alex";
+const loadCurrentUser = () => {
+  const saved = localStorage.getItem(CURRENT_USER_KEY);
+  return USERS.includes(saved) ? saved : USERS[0];
+};
 
 // Pull all of a user's data from Supabase.
 const cloudPull = async (user) => {
@@ -467,7 +469,6 @@ const guideLinkStyle = {
 
 function App() {
   const [activeDay, setActiveDay] = useState(0);
-  const [users, setUsers] = useState(loadUsers);
   const [currentUser, setCurrentUser] = useState(loadCurrentUser);
   const [log, setLog] = useState(() => { migrateLegacy(loadCurrentUser()); return load(loadCurrentUser()); });
   const [activeSet, setActiveSet] = useState(null);
@@ -497,17 +498,6 @@ function App() {
       return next;
     });
   }, [currentUser]);
-
-  const addUser = () => {
-    const name = (prompt("New user name (lowercase, no spaces):") || "").trim().toLowerCase().replace(/\s+/g, "-");
-    if (!name) return;
-    if (!users.includes(name)) {
-      const next = [...users, name];
-      setUsers(next);
-      try { localStorage.setItem(USERS_KEY, JSON.stringify(next)); } catch {}
-    }
-    setCurrentUser(name);
-  };
 
   // On user switch / first load: swap in that user's local cache, then merge cloud data.
   const didInitUser = useRef(false);
@@ -1557,15 +1547,16 @@ function App() {
           <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Strength Tracker</h1>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <select
-            value={currentUser}
-            onChange={e => { if (e.target.value === "__add__") addUser(); else setCurrentUser(e.target.value); }}
-            title="Switch user"
-            style={{ background: "#1A1A1A", border: "1px solid #3A3A2A", color: "#CB8", borderRadius: 6, padding: "6px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}
-          >
-            {users.map(u => <option key={u} value={u}>{u}</option>)}
-            <option value="__add__">+ add user…</option>
-          </select>
+          {USERS.length > 1 && (
+            <select
+              value={currentUser}
+              onChange={e => setCurrentUser(e.target.value)}
+              title="Switch user"
+              style={{ background: "#1A1A1A", border: "1px solid #3A3A2A", color: "#CB8", borderRadius: 6, padding: "6px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}
+            >
+              {USERS.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          )}
           <button onClick={() => setOverviewView(true)} title="Cross-exercise history and bodyweight trends" style={{ background: "#1A1A1A", border: "1px solid #2A2A3A", color: "#9AC", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Overview</button>
           <button onClick={syncWithVault} title="Push local sessions to the vault and pull any missing ones back" style={{ background: "#1A1A1A", border: "1px solid #2A3A4A", color: "#7AB", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>{syncStatus?.phase === "pushing" ? "Pushing…" : syncStatus?.phase === "pulling" ? "Pulling…" : "Sync"}</button>
           <button onClick={generateMockData} title="Load 30 mock sessions across the past ~10 weeks" style={{ background: "#1A1A1A", border: "1px solid #2A3A2A", color: "#6A8" , borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Demo</button>
