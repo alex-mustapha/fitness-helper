@@ -14,14 +14,14 @@ Train any 3 non-consecutive days per week (e.g. Mon/Wed/Fri).
 
 ## Cardio
 
-Each workout day has an optional **cardio block** you can add as a **starter** (before the lifts) or a **finisher** (after accessories). Tap **+ Add starter cardio** / **+ Add finisher cardio** and log:
+**Every training day includes a required cardio block** (the "Conditioning" section at the top of each day) — do it before or after lifting, it doesn't matter. Log:
 
 - **Activity** — incline walk, run, bike, row, elliptical, stair, swim, jump rope, other
 - **Target intensity** — Z1 Recovery, Z2 Easy Aerobic, Z3 Tempo, Z4 Threshold, Z5 VO₂/Intervals
 - **Duration** (min) and optional **Distance** (mi) — pace is derived automatically
 - **RPE** (1–10) and free-text **Notes**
 
-Cardio is optional and never blocks the "session complete" state. It's saved and cloud-synced as part of the session.
+Cardio is **required**: a session isn't marked complete until the cardio block has a duration logged. When all your lifts are done but cardio isn't, a reminder appears; the block header shows **REQUIRED** until logged, then **DONE ✓**. (You can still **End workout** early to bypass it.) It's saved and cloud-synced as part of the session.
 
 ### Intensity guidance — "am I coasting?"
 
