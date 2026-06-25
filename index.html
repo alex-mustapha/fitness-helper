@@ -177,138 +177,103 @@ const sb = (window.supabase && SUPABASE_URL.startsWith("http"))
 
 const DAYS = [
   {
-    id: "a", name: "Day A", subtitle: "Squat Focus", color: "#E63946",
+    id: "a", name: "Push", subtitle: "Chest · Shoulders · Triceps", color: "#E63946", cardioGoal: "easy", cardioModality: "Incline Walk",
     exercises: [
-      { id: "a1", name: "Barbell Back Squat", sets: 4, reps: "5", rest: "3 min",
-        alts: [
-          { id: "front-squat", name: "Front Squat" },
-          { id: "hack-squat", name: "Hack Squat", reps: "5-8" },
-          { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", reps: "8-10/leg", rest: "90 sec" },
-          { id: "heavy-leg-press", name: "Heavy Leg Press", reps: "6-8" },
-        ] },
-      { id: "a2", name: "Barbell Bench Press", sets: 4, reps: "6-8", rest: "2-3 min",
+      { id: "p1", name: "Barbell Bench Press", sets: 4, reps: "6-8", rest: "2-3 min",
         alts: [
           { id: "db-bench", name: "DB Bench Press", reps: "8-10" },
           { id: "floor-press", name: "Floor Press" },
           { id: "machine-chest-press", name: "Machine Chest Press", reps: "8-10" },
           { id: "weighted-pushup", name: "Weighted Push-up", reps: "8-12" },
         ] },
-      { id: "a3", name: "Barbell Row", sets: 3, reps: "8-10", rest: "2 min",
+      { id: "p2", name: "Barbell OHP", sets: 3, reps: "6-8", rest: "2 min",
+        alts: [
+          { id: "seated-db-press", name: "Seated DB Press", reps: "8-10" },
+          { id: "landmine-press", name: "Landmine Press", reps: "8-10" },
+          { id: "machine-shoulder-press", name: "Machine Shoulder Press", reps: "8-10" },
+        ] },
+      { id: "p3", name: "Incline DB Press", sets: 3, reps: "8-10", rest: "90 sec",
+        alts: [
+          { id: "incline-bb", name: "Incline BB Press", reps: "6-8" },
+          { id: "incline-machine", name: "Incline Machine Press" },
+          { id: "low-incline-db", name: "Low-Incline DB Press" },
+        ] },
+      { id: "p4", name: "DB Lateral Raise", sets: 3, reps: "12-15", rest: "60 sec",
+        alts: [
+          { id: "cable-lateral", name: "Cable Lateral Raise", reps: "12-15" },
+          { id: "machine-lateral", name: "Machine Lateral Raise", reps: "12-15" },
+        ] },
+      { id: "p5", name: "Triceps Pushdown", sets: 3, reps: "10-12", rest: "60 sec",
+        alts: [
+          { id: "overhead-triceps", name: "Overhead Triceps Ext", reps: "10-12" },
+          { id: "skull-crusher", name: "Skull Crusher", reps: "8-10" },
+          { id: "dip", name: "Dip", reps: "8-12" },
+        ] },
+    ],
+  },
+  {
+    id: "b", name: "Pull", subtitle: "Back · Biceps · Rear Delts", color: "#457B9D", cardioGoal: "easy", cardioModality: "Row",
+    exercises: [
+      { id: "pl1", name: "Lat Pulldown", sets: 4, reps: "8-10", rest: "2 min",
+        alts: [
+          { id: "pull-up", name: "Pull-up", reps: "AMRAP" },
+          { id: "chin-up", name: "Chin-up", reps: "AMRAP" },
+          { id: "neutral-pulldown", name: "Neutral-grip Pulldown" },
+        ] },
+      { id: "pl2", name: "Barbell Row", sets: 3, reps: "8-10", rest: "2 min",
         alts: [
           { id: "db-row", name: "DB Row", reps: "10-12" },
           { id: "chest-supported-row", name: "Chest-Supported Row" },
           { id: "t-bar-row", name: "T-Bar Row" },
           { id: "pendlay-row", name: "Pendlay Row", reps: "5-8" },
         ] },
-      { id: "a4", name: "DB Romanian Deadlift", sets: 3, reps: "10-12", rest: "90 sec",
+      { id: "pl3", name: "Seated Cable Row", sets: 3, reps: "10-12", rest: "90 sec",
+        alts: [
+          { id: "seal-row", name: "Seal Row" },
+          { id: "chest-supported-row", name: "Chest-Supported Row" },
+          { id: "inverted-row", name: "Inverted Row", reps: "10-15" },
+        ] },
+      { id: "pl4", name: "Cable Face Pull", sets: 3, reps: "15-20", rest: "60 sec",
+        alts: [
+          { id: "reverse-pec-deck", name: "Reverse Pec Deck" },
+          { id: "band-pull-apart", name: "Band Pull-Apart", reps: "20-25" },
+          { id: "rear-delt-fly", name: "Rear Delt Fly", reps: "12-15" },
+        ] },
+      { id: "pl5", name: "Biceps Curl", sets: 3, reps: "10-12", rest: "60 sec",
+        alts: [
+          { id: "hammer-curl", name: "Hammer Curl", reps: "10-12" },
+          { id: "ez-curl", name: "EZ-Bar Curl", reps: "8-10" },
+          { id: "preacher-curl", name: "Preacher Curl", reps: "10-12" },
+          { id: "incline-db-curl", name: "Incline DB Curl", reps: "10-12" },
+        ] },
+    ],
+  },
+  {
+    id: "c", name: "Legs", subtitle: "Light lifting + HIIT cardio", color: "#2A9D8F", cardioGoal: "threshold", cardioModality: "Bike",
+    exercises: [
+      { id: "lg1", name: "Leg Press", sets: 3, reps: "10-12", rest: "2 min",
+        alts: [
+          { id: "hack-squat", name: "Hack Squat", reps: "8-10" },
+          { id: "goblet-squat", name: "Goblet Squat", reps: "10-12" },
+          { id: "back-squat", name: "Back Squat", reps: "5-8" },
+        ] },
+      { id: "lg2", name: "Romanian Deadlift", sets: 3, reps: "10-12", rest: "90 sec",
         alts: [
           { id: "bb-rdl", name: "Barbell RDL", reps: "8-10" },
           { id: "hip-thrust", name: "Hip Thrust", reps: "8-10" },
           { id: "single-leg-rdl", name: "Single-leg RDL", reps: "10/leg" },
           { id: "good-morning", name: "Good Morning", reps: "10-12" },
         ] },
-      { id: "a5", name: "Cable Face Pull", sets: 3, reps: "15-20", rest: "60 sec",
-        alts: [
-          { id: "reverse-pec-deck", name: "Reverse Pec Deck" },
-          { id: "band-pull-apart", name: "Band Pull-Apart", reps: "20-25" },
-          { id: "rear-delt-fly", name: "Rear Delt Fly", reps: "12-15" },
-        ] },
-      { id: "a6", name: "Plank Hold", sets: 3, reps: "30-45s", rest: "60 sec",
-        alts: [
-          { id: "side-plank", name: "Side Plank", reps: "30s/side" },
-          { id: "dead-bug", name: "Dead Bug", reps: "10/side" },
-          { id: "pallof-press", name: "Pallof Press", reps: "10/side" },
-          { id: "ab-wheel", name: "Ab Wheel Rollout", reps: "8-12" },
-        ] },
-    ],
-  },
-  {
-    id: "b", name: "Day B", subtitle: "Press Focus", color: "#457B9D",
-    exercises: [
-      { id: "b1", name: "Barbell OHP", sets: 4, reps: "5-6", rest: "3 min",
-        alts: [
-          { id: "seated-db-press", name: "Seated DB Press", reps: "6-8" },
-          { id: "landmine-press", name: "Landmine Press", reps: "8-10" },
-          { id: "machine-shoulder-press", name: "Machine Shoulder Press", reps: "8-10" },
-          { id: "push-press", name: "Push Press", reps: "3-5" },
-        ] },
-      { id: "b2", name: "Deadlift (Trap/Conv)", sets: 3, reps: "5", rest: "3 min",
-        alts: [
-          { id: "trap-bar-dl", name: "Trap Bar Deadlift" },
-          { id: "rack-pull", name: "Rack Pull", reps: "5-6" },
-          { id: "bb-rdl", name: "Barbell RDL", reps: "8-10", rest: "2 min" },
-        ] },
-      { id: "b3", name: "Incline DB Press", sets: 3, reps: "8-10", rest: "2 min",
-        alts: [
-          { id: "incline-bb", name: "Incline BB Press" },
-          { id: "incline-machine", name: "Incline Machine Press" },
-          { id: "low-incline-db", name: "Low-Incline DB Press" },
-        ] },
-      { id: "b4", name: "Lat Pulldown", sets: 3, reps: "10-12", rest: "90 sec",
-        alts: [
-          { id: "pull-up", name: "Pull-up", reps: "AMRAP" },
-          { id: "chin-up", name: "Chin-up", reps: "AMRAP" },
-          { id: "neutral-pulldown", name: "Neutral-grip Pulldown" },
-          { id: "inverted-row", name: "Inverted Row", reps: "8-12" },
-        ] },
-      { id: "b5", name: "Leg Press", sets: 3, reps: "10-12", rest: "2 min",
-        alts: [
-          { id: "hack-squat", name: "Hack Squat", reps: "8-10" },
-          { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", reps: "8-10/leg" },
-          { id: "goblet-squat", name: "Goblet Squat", reps: "10-12" },
-          { id: "step-up", name: "Step-up", reps: "10/leg" },
-        ] },
-      { id: "b6", name: "Curl + Pushdown SS", sets: 3, reps: "12 ea", rest: "60 sec",
-        alts: [
-          { id: "hammer-skull-ss", name: "Hammer Curl + Skull Crusher", reps: "10 ea" },
-          { id: "ez-curl-overhead-tri", name: "EZ Curl + Overhead Triceps", reps: "10 ea" },
-          { id: "preacher-dip", name: "Preacher Curl + Dip", reps: "10 ea" },
-        ] },
-    ],
-  },
-  {
-    id: "c", name: "Day C", subtitle: "Deadlift Focus", color: "#2A9D8F",
-    exercises: [
-      { id: "c1", name: "Barbell Deadlift", sets: 4, reps: "3-5", rest: "3-4 min",
-        alts: [
-          { id: "trap-bar-dl", name: "Trap Bar Deadlift" },
-          { id: "rack-pull", name: "Rack Pull", reps: "5-6" },
-          { id: "block-pull", name: "Block Pull", reps: "3-5" },
-          { id: "stiff-leg-dl", name: "Stiff-leg Deadlift", reps: "6-8", rest: "2-3 min" },
-        ] },
-      { id: "c2", name: "Front/Goblet Squat", sets: 3, reps: "8-10", rest: "2 min",
-        alts: [
-          { id: "heels-elevated-squat", name: "Heels-elevated Squat" },
-          { id: "hack-squat", name: "Hack Squat" },
-          { id: "db-squat", name: "DB Squat" },
-        ] },
-      { id: "c3", name: "DB Bench Press", sets: 3, reps: "10-12", rest: "90 sec",
-        alts: [
-          { id: "bb-bench", name: "Barbell Bench Press", reps: "6-8", rest: "2 min" },
-          { id: "machine-chest-press", name: "Machine Chest Press" },
-          { id: "dip", name: "Dip", reps: "8-12" },
-          { id: "floor-press", name: "Floor Press" },
-        ] },
-      { id: "c4", name: "Cable Row", sets: 3, reps: "10-12", rest: "90 sec",
-        alts: [
-          { id: "chest-supported-row", name: "Chest-Supported Row" },
-          { id: "db-row", name: "DB Row" },
-          { id: "seal-row", name: "Seal Row" },
-          { id: "inverted-row", name: "Inverted Row", reps: "10-15" },
-        ] },
-      { id: "c5", name: "Walking Lunges", sets: 3, reps: "10/leg", rest: "90 sec",
+      { id: "lg3", name: "Walking Lunges", sets: 2, reps: "10/leg", rest: "90 sec",
         alts: [
           { id: "reverse-lunge", name: "Reverse Lunge", reps: "10/leg" },
           { id: "step-up", name: "Step-up", reps: "10/leg" },
-          { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", reps: "8-10/leg" },
-          { id: "lateral-lunge", name: "Lateral Lunge", reps: "10/leg" },
+          { id: "leg-extension", name: "Leg Extension", reps: "12-15" },
         ] },
-      { id: "c6", name: "Hanging Leg Raise", sets: 3, reps: "10-15", rest: "60 sec",
+      { id: "lg4", name: "Standing Calf Raise", sets: 3, reps: "12-15", rest: "60 sec",
         alts: [
-          { id: "cable-crunch", name: "Cable Crunch", reps: "12-15" },
-          { id: "decline-situp", name: "Decline Sit-up", reps: "10-15" },
-          { id: "ab-wheel", name: "Ab Wheel Rollout", reps: "8-12" },
-          { id: "v-up", name: "V-up", reps: "10-15" },
+          { id: "seated-calf-raise", name: "Seated Calf Raise", reps: "15-20" },
+          { id: "leg-press-calf", name: "Leg Press Calf Raise", reps: "12-15" },
         ] },
     ],
   },
@@ -316,25 +281,23 @@ const DAYS = [
 
 const ACCESSORIES = {
   a: [
-    { id: "pull-up", name: "Pull-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
-    { id: "chin-up", name: "Chin-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
-    { id: "hip-thrust", name: "Hip Thrust", sets: 3, reps: "8-10", rest: "90 sec" },
-    { id: "calf-raise", name: "Standing Calf Raise", sets: 3, reps: "12-15", rest: "60 sec" },
-    { id: "ab-wheel", name: "Ab Wheel Rollout", sets: 3, reps: "8-12", rest: "60 sec" },
+    { id: "dip", name: "Dip", sets: 3, reps: "8-12", rest: "90 sec" },
+    { id: "cable-fly", name: "Cable Fly", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "overhead-triceps", name: "Overhead Triceps Ext", sets: 3, reps: "10-12", rest: "60 sec" },
+    { id: "front-raise", name: "DB Front Raise", sets: 3, reps: "12-15", rest: "60 sec" },
   ],
   b: [
-    { id: "calf-raise", name: "Standing Calf Raise", sets: 3, reps: "12-15", rest: "60 sec" },
-    { id: "hip-thrust", name: "Hip Thrust", sets: 3, reps: "8-10", rest: "90 sec" },
-    { id: "lateral-raise", name: "DB Lateral Raise", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "hammer-curl", name: "Hammer Curl", sets: 3, reps: "10-12", rest: "60 sec" },
+    { id: "shrug", name: "DB Shrug", sets: 3, reps: "12-15", rest: "60 sec" },
     { id: "rear-delt-fly", name: "Rear Delt Fly", sets: 3, reps: "12-15", rest: "60 sec" },
     { id: "pull-up", name: "Pull-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
   ],
   c: [
-    { id: "pull-up", name: "Pull-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
-    { id: "chin-up", name: "Chin-up", sets: 3, reps: "AMRAP", rest: "90 sec" },
-    { id: "calf-raise", name: "Standing Calf Raise", sets: 3, reps: "12-15", rest: "60 sec" },
-    { id: "hammer-curl", name: "Hammer Curl", sets: 3, reps: "10-12", rest: "60 sec" },
-    { id: "rear-delt-fly", name: "Rear Delt Fly", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "leg-curl", name: "Leg Curl", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "leg-extension", name: "Leg Extension", sets: 3, reps: "12-15", rest: "60 sec" },
+    { id: "hip-thrust", name: "Hip Thrust", sets: 3, reps: "8-10", rest: "90 sec" },
+    { id: "hanging-leg-raise", name: "Hanging Leg Raise", sets: 3, reps: "10-15", rest: "60 sec" },
+    { id: "plank", name: "Plank Hold", sets: 3, reps: "30-45s", rest: "60 sec" },
   ],
 };
 
@@ -1911,7 +1874,9 @@ function App() {
           const inputStyle = { width: "100%", padding: "8px 10px", background: "#1A1A1A", border: "1px solid #2A3A3A", borderRadius: 8, color: "#E8E8E8", fontSize: 14, fontFamily: "monospace", outline: "none", boxSizing: "border-box" };
           const fieldWrap = { flex: 1, display: "flex", flexDirection: "column", gap: 4 };
           const fieldLabel = { fontSize: 10, color: "#666", letterSpacing: 0.5 };
-          const zone = HR_ZONES.find(z => z.id === (c.goal || "easy")) || HR_ZONES[1];
+          const defGoal = day.cardioGoal || "easy";
+          const defMod = day.cardioModality || "Incline Walk";
+          const zone = HR_ZONES.find(z => z.id === (c.goal || defGoal)) || HR_ZONES[1];
           const mhr = parseInt(maxHR) || 0;
           const hrTarget = mhr > 0 ? `${Math.round(mhr * zone.lo)}–${Math.round(mhr * zone.hi)} bpm` : `${Math.round(zone.lo * 100)}–${Math.round(zone.hi * 100)}% of max HR`;
           return (
@@ -1923,12 +1888,12 @@ function App() {
               <div style={{ fontSize: 11, color: "#789", marginBottom: 10 }}>Every training day includes cardio — do it before or after lifting.</div>
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 <label style={fieldWrap}><span style={fieldLabel}>Activity</span>
-                  <select value={c.modality || "Incline Walk"} onChange={e => setCardio("modality", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer" }}>
+                  <select value={c.modality || defMod} onChange={e => setCardio("modality", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer" }}>
                     {CARDIO_MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </label>
                 <label style={fieldWrap}><span style={fieldLabel}>Target intensity</span>
-                  <select value={c.goal || "easy"} onChange={e => setCardio("goal", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer" }}>
+                  <select value={c.goal || defGoal} onChange={e => setCardio("goal", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer" }}>
                     {HR_ZONES.map(z => <option key={z.id} value={z.id}>{z.zone} · {z.name}</option>)}
                   </select>
                 </label>

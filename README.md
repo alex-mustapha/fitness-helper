@@ -4,11 +4,13 @@ A mobile-first workout tracker for a 3-day full body strength program. Built as 
 
 ## Program Overview
 
-This is a 3-day full body intermediate strength program on a 7-week cycle:
+This is a 3-day **Push / Pull / Legs** split, designed to ease in (lighter leg day, conservative starting volume):
 
-- **Day A — Squat Focus**: Back Squat, Bench Press, Barbell Row, DB RDL, Face Pull, Plank
-- **Day B — Press Focus**: OHP, Deadlift, Incline DB Press, Lat Pulldown, Leg Press, Curl + Pushdown
-- **Day C — Deadlift Focus**: Deadlift, Front/Goblet Squat, DB Bench, Cable Row, Walking Lunges, Hanging Leg Raise
+- **Push** — Chest · Shoulders · Triceps: Bench Press, OHP, Incline DB Press, Lateral Raise, Triceps Pushdown
+- **Pull** — Back · Biceps · Rear Delts: Lat Pulldown, Barbell Row, Seated Cable Row, Face Pull, Biceps Curl
+- **Legs** — light lifting + HIIT cardio: Leg Press, Romanian Deadlift, Walking Lunges, Calf Raise
+
+Each muscle group is trained once per week, leaving generous recovery between sessions. The **leg day is intentionally light on lifting** and pairs with the week's high-intensity (interval) cardio; push and pull days pair with easy steady-state cardio. Every exercise has substitutes (tap **Sub**) and the per-session sets/reps are editable, so start conservative and add volume over the first few weeks.
 
 Train any 3 non-consecutive days per week (e.g. Mon/Wed/Fri).
 
@@ -20,6 +22,8 @@ Train any 3 non-consecutive days per week (e.g. Mon/Wed/Fri).
 - **Target intensity** — Z1 Recovery, Z2 Easy Aerobic, Z3 Tempo, Z4 Threshold, Z5 VO₂/Intervals
 - **Duration** (min) and optional **Distance** (mi) — pace is derived automatically
 - **RPE** (1–10) and free-text **Notes**
+
+The block pre-fills a sensible target per day — **easy (Z2) steady-state on Push and Pull days**, and **high-intensity (Z4) intervals on Legs day** (defaulting to the bike to spare your knees) — but you can change the activity and target intensity any time.
 
 Cardio is **required**: a session isn't marked complete until the cardio block has a duration logged. When all your lifts are done but cardio isn't, a reminder appears; the block header shows **REQUIRED** until logged, then **DONE ✓**. (You can still **End workout** early to bypass it.) It's saved and cloud-synced as part of the session.
 
