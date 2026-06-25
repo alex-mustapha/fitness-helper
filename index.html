@@ -390,7 +390,10 @@ const cloudPull = async (user) => {
 };
 
 const fmtDate = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const keyOf = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const todayKey = () => keyOf(new Date());
+const parseKey = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const weekdayOfKey = (k) => (parseKey(k).getDay() + 6) % 7; // Monday = 0
 const parseRest = (s) => { const m = s.match(/(\d+)/); if (!m) return 120; const n = parseInt(m[1]); return s.includes("min") ? n * 60 : n; };
 
 const computeMetric = (sessionData, metric) => {
@@ -542,6 +545,46 @@ function UserMenu({ currentUser, setCurrentUser }) {
       style={{ background: "#1A1A1A", border: "1px solid #3A3A2A", color: "#CB8", borderRadius: 6, padding: "6px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
       {USERS.map(u => <option key={u} value={u}>{u}</option>)}
     </select>
+  );
+}
+
+// Date stepper — drives the whole app's active day. Can't step into the future.
+function DateNav({ activeDate, setActiveDate }) {
+  const isToday = activeDate === todayKey();
+  const shift = (n) => { const d = parseKey(activeDate); d.setDate(d.getDate() + n); const k = keyOf(d); if (k <= todayKey()) setActiveDate(k); };
+  const btn = { background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#E8E8E8", borderRadius: 7, width: 30, height: 30, cursor: "pointer", fontSize: 14, lineHeight: 1 };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <button onClick={() => shift(-1)} title="Previous day" style={btn}>◀</button>
+      <div style={{ minWidth: 96, textAlign: "center", fontSize: 12, fontFamily: "monospace", color: isToday ? "#34d399" : "#E8E8E8" }}>
+        {isToday ? "Today" : fmtDate(parseKey(activeDate))}
+      </div>
+      <button onClick={() => shift(1)} disabled={isToday} title="Next day" style={{ ...btn, opacity: isToday ? 0.35 : 1, cursor: isToday ? "default" : "pointer" }}>▶</button>
+      {!isToday && <button onClick={() => setActiveDate(todayKey())} title="Jump to today" style={{ ...btn, width: "auto", padding: "0 10px", fontSize: 11, color: "#9AC" }}>Today</button>}
+    </div>
+  );
+}
+
+// Last-7-days food-logging strip; tap a day to jump there. Returns the most
+// recent unlogged past day (for the nudge) via onGap.
+function WeekStrip({ log, activeDate, onPick }) {
+  const today = parseKey(todayKey());
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    const k = keyOf(d);
+    const logged = ((log.foodLog && log.foodLog[k] && log.foodLog[k].entries) || []).length > 0;
+    days.push({ k, d, logged, isToday: k === todayKey(), isActive: k === activeDate });
+  }
+  return (
+    <div style={{ display: "flex", gap: 6, justifyContent: "space-between" }}>
+      {days.map(({ k, d, logged, isToday, isActive }) => (
+        <button key={k} onClick={() => onPick(k)} title={fmtDate(d)} style={{ flex: 1, background: isActive ? "#0E2018" : "#121212", border: "1px solid " + (isActive ? "#34d399" : "#222"), borderRadius: 8, padding: "8px 2px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+          <span style={{ fontSize: 9, color: "#777", fontFamily: "monospace", textTransform: "uppercase" }}>{["S", "M", "T", "W", "T", "F", "S"][d.getDay()]}</span>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: logged ? "#34d399" : "transparent", border: "1.5px solid " + (logged ? "#34d399" : (isToday ? "#888" : "#3A3A3A")) }} />
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -854,19 +897,23 @@ function CravingBusters() {
 }
 
 // ─── Eat tab ─────────────────────────────────────────────────────────
-function EatView({ targets, foodToday, onAdd, onRemove, onClear, onSetTargets, currentUser, setCurrentUser }) {
+function EatView({ targets, foodToday, onAdd, onRemove, onClear, onSetTargets, currentUser, setCurrentUser, activeDate, setActiveDate }) {
   const [editT, setEditT] = useState(false);
   const [draft, setDraft] = useState(targets);
   const tIn = { width: 64, background: "#0E0E0E", border: "1px solid #2A2A2A", borderRadius: 8, padding: "8px 10px", color: "#E8E8E8", fontFamily: "monospace", fontSize: 14 };
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 96px" }}>
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+      <div style={{ marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div>
-          <div style={ebStyle}>{fmtDate(new Date())}</div>
+          <div style={ebStyle}>Macro log</div>
           <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Eat</h1>
           <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Keto plan · {targets.carb}g net-carb target. Track it, plan it, beat cravings.</div>
         </div>
         <UserMenu currentUser={currentUser} setCurrentUser={setCurrentUser} />
+      </div>
+      <div style={{ ...cardStyle, padding: "8px 10px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 11, color: "#888", fontFamily: "monospace" }}>Logging for</span>
+        <DateNav activeDate={activeDate} setActiveDate={setActiveDate} />
       </div>
 
       <div style={{ ...cardStyle, padding: "12px 14px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -900,11 +947,20 @@ function EatView({ targets, foodToday, onAdd, onRemove, onClear, onSetTargets, c
 }
 
 // ─── Today tab (the synergy view) ────────────────────────────────────
-function TodayView({ log, tk, targets, foodToday, currentUser, setCurrentUser, onLogWeight, onGoTrain, onGoEat }) {
+function TodayView({ log, tk, targets, foodToday, currentUser, setCurrentUser, activeDate, setActiveDate, onLogWeight, onGoTrain, onGoEat, onPickDay }) {
   const [bw, setBw] = useState((log.bodyweight && log.bodyweight[tk]) || "");
   useEffect(() => { setBw((log.bodyweight && log.bodyweight[tk]) || ""); }, [tk, log.bodyweight]);
+  const [nudgeDismissed, setNudgeDismissed] = useState("");
+  const isToday = tk === todayKey();
   const trained = trainingToday(log, tk);
-  const plan = PLAN[weekdayIdx()];
+  const plan = PLAN[weekdayOfKey(tk)];
+
+  // Most recent unlogged day in the last 7 (before today) — drives the nudge.
+  let missedDay = null;
+  for (let i = 1; i <= 6; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i); const k = keyOf(d);
+    if (((log.foodLog && log.foodLog[k] && log.foodLog[k].entries) || []).length === 0) { missedDay = k; break; }
+  }
   const tot = sumMacros(foodToday.entries);
   const c = Math.round(tot.c), p = Math.round(tot.p), f = Math.round(tot.f);
   const kc = dietKcal(tot.c, tot.p, tot.f);
@@ -950,13 +1006,30 @@ function TodayView({ log, tk, targets, foodToday, currentUser, setCurrentUser, o
   const proteinShort = p < proteinGoal;
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 96px" }}>
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+      <div style={{ marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div>
-          <div style={ebStyle}>{fmtDate(new Date())}</div>
-          <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Today</h1>
+          <div style={ebStyle}>{isToday ? fmtDate(parseKey(tk)) : "Viewing"}</div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>{isToday ? "Today" : fmtDate(parseKey(tk))}</h1>
         </div>
         <UserMenu currentUser={currentUser} setCurrentUser={setCurrentUser} />
       </div>
+
+      <div style={{ ...cardStyle, padding: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 11, color: "#888", fontFamily: "monospace" }}>Last 7 days</span>
+          <DateNav activeDate={activeDate} setActiveDate={setActiveDate} />
+        </div>
+        <WeekStrip log={log} activeDate={activeDate} onPick={onPickDay} />
+      </div>
+
+      {missedDay && nudgeDismissed !== missedDay && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#241B0C", border: "1px solid #4A3A1A", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+          <span style={{ fontSize: 18 }}>📋</span>
+          <div style={{ flex: 1, fontSize: 13, color: "#f2c98a" }}>You haven't logged <b>{fmtDate(parseKey(missedDay))}</b> yet.</div>
+          <button onClick={() => onPickDay(missedDay)} style={{ background: "#f2a93b", color: "#0F0F0F", border: "none", borderRadius: 7, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Log it</button>
+          <button onClick={() => setNudgeDismissed(missedDay)} title="Dismiss" style={{ background: "none", border: "none", color: "#9A7B4A", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* Bodyweight + training status */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
@@ -1049,6 +1122,7 @@ function App() {
   const [overviewView, setOverviewView] = useState(false);
   const [chestOpen, setChestOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("today");
+  const [activeDate, setActiveDate] = useState(todayKey());
   const prevCompleteRef = useRef({});
   const prevCompleted = useRef(0);
   const autoSavedRef = useRef({});
@@ -1093,7 +1167,7 @@ function App() {
   }, [restTimer, restLeft]);
 
   const day = DAYS[activeDay];
-  const tk = todayKey();
+  const tk = activeDate;
   const sk = `${tk}-${day.id}`;
   const session = log.sessions[sk] || {};
   const omitted = session._omitted || {};
@@ -1494,11 +1568,11 @@ function App() {
 
   // ── Tab routing: Today / Eat render here; Train falls through to the views below ──
   if (activeTab === "eat") return (<>
-    <EatView targets={dietTargets} foodToday={foodToday} onAdd={addFood} onRemove={removeFood} onClear={clearFoodDay} onSetTargets={setDietTargets} currentUser={currentUser} setCurrentUser={setCurrentUser} />
+    <EatView targets={dietTargets} foodToday={foodToday} onAdd={addFood} onRemove={removeFood} onClear={clearFoodDay} onSetTargets={setDietTargets} currentUser={currentUser} setCurrentUser={setCurrentUser} activeDate={activeDate} setActiveDate={setActiveDate} />
     <BottomTabs active="eat" onChange={setActiveTab} />
   </>);
   if (activeTab === "today") return (<>
-    <TodayView log={log} tk={tk} targets={dietTargets} foodToday={foodToday} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogWeight={logBodyweight} onGoTrain={() => setActiveTab("train")} onGoEat={() => setActiveTab("eat")} />
+    <TodayView log={log} tk={tk} targets={dietTargets} foodToday={foodToday} currentUser={currentUser} setCurrentUser={setCurrentUser} activeDate={activeDate} setActiveDate={setActiveDate} onLogWeight={logBodyweight} onGoTrain={() => setActiveTab("train")} onGoEat={() => setActiveTab("eat")} onPickDay={(k) => { setActiveDate(k); setActiveTab("eat"); }} />
     <BottomTabs active="today" onChange={setActiveTab} />
   </>);
 
@@ -2240,7 +2314,7 @@ function App() {
       {/* Header */}
       <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "#555", fontFamily: "monospace" }}>{fmtDate(new Date())}</div>
+          <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: tk === todayKey() ? "#555" : "#f2a93b", fontFamily: "monospace" }}>{fmtDate(parseKey(tk))}{tk === todayKey() ? "" : " · past entry"}</div>
           <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Train</h1>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -2257,6 +2331,12 @@ function App() {
           <button onClick={() => setOverviewView(true)} title="Cross-exercise history and bodyweight trends" style={{ background: "#1A1A1A", border: "1px solid #2A2A3A", color: "#9AC", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Overview</button>
           <button onClick={clearAllData} title="Clear all data for this user (device + cloud)" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
         </div>
+      </div>
+
+      {/* Date stepper — back-date a missed workout */}
+      <div style={{ background: "#151515", border: "1px solid " + (tk === todayKey() ? "#222" : "#4A3A1A"), borderRadius: 12, padding: "8px 10px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 11, color: "#888", fontFamily: "monospace" }}>Workout date</span>
+        <DateNav activeDate={activeDate} setActiveDate={setActiveDate} />
       </div>
 
       {/* Backend not configured warning */}
