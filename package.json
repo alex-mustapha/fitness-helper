@@ -1,9 +1,5 @@
 {
   "name": "strength-tracker",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@netlify/blobs": "^7.4.0"
-  }
+  "private": true
 }

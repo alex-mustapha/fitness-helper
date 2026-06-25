@@ -160,9 +160,20 @@
 <div id="app"></div>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="text/babel">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── Backend config ───────────────────────────────────────────────
+// Paste your Supabase project values here (Settings → API in Supabase).
+// The anon key is safe to expose in client-side code by design.
+const SUPABASE_URL = "https://gyvklppljuqrmiwkuuuo.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_pLpCLS4OrY8qsvenLiYlEA_Uv_g6hxX";
+const sb = (window.supabase && SUPABASE_URL.startsWith("http"))
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+// ──────────────────────────────────────────────────────────────────
 
 const DAYS = [
   {
@@ -348,9 +359,42 @@ const applyCustom = (slot, customMap) => {
   return out;
 };
 
-const SK = "workout-log-v1";
-const load = () => { try { const d = JSON.parse(localStorage.getItem(SK)) || {}; if (!d.sessions) d.sessions = {}; if (!d.bodyweight) d.bodyweight = {}; return d; } catch { return { sessions: {}, bodyweight: {} }; } };
-const save = (d) => { try { localStorage.setItem(SK, JSON.stringify(d)); } catch(e) { console.error(e); } };
+const SK_BASE = "workout-log-v1";
+const userKey = (u) => `${SK_BASE}::${u}`;
+const load = (u) => { try { const d = JSON.parse(localStorage.getItem(userKey(u))) || {}; if (!d.sessions) d.sessions = {}; if (!d.bodyweight) d.bodyweight = {}; return d; } catch { return { sessions: {}, bodyweight: {} }; } };
+const save = (u, d) => { try { localStorage.setItem(userKey(u), JSON.stringify(d)); } catch(e) { console.error(e); } };
+
+// One-time migration: adopt old un-namespaced data for a user if they have none yet.
+const migrateLegacy = (u) => {
+  try {
+    const legacy = localStorage.getItem(SK_BASE);
+    if (legacy && !localStorage.getItem(userKey(u))) localStorage.setItem(userKey(u), legacy);
+  } catch {}
+};
+
+// Static user list (no login). Add users via the header dropdown as needed.
+const USERS_KEY = "st-users";
+const CURRENT_USER_KEY = "st-current-user";
+const loadUsers = () => { try { const u = JSON.parse(localStorage.getItem(USERS_KEY)); return Array.isArray(u) && u.length ? u : ["alex"]; } catch { return ["alex"]; } };
+const loadCurrentUser = () => localStorage.getItem(CURRENT_USER_KEY) || "alex";
+
+// Pull all of a user's data from Supabase.
+const cloudPull = async (user) => {
+  if (!sb) return { ok: false, error: "Supabase not configured" };
+  try {
+    const [s, b] = await Promise.all([
+      sb.from("sessions").select("session_key,data").eq("user_id", user),
+      sb.from("bodyweight").select("date,weight").eq("user_id", user),
+    ]);
+    if (s.error) throw s.error;
+    if (b.error) throw b.error;
+    const sessions = {}; (s.data || []).forEach(r => { sessions[r.session_key] = r.data; });
+    const bodyweight = {}; (b.data || []).forEach(r => { bodyweight[r.date] = r.weight; });
+    return { ok: true, sessions, bodyweight };
+  } catch (e) {
+    return { ok: false, error: e.message || "fetch failed" };
+  }
+};
 
 const fmtDate = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
@@ -423,7 +467,9 @@ const guideLinkStyle = {
 
 function App() {
   const [activeDay, setActiveDay] = useState(0);
-  const [log, setLog] = useState(load);
+  const [users, setUsers] = useState(loadUsers);
+  const [currentUser, setCurrentUser] = useState(loadCurrentUser);
+  const [log, setLog] = useState(() => { migrateLegacy(loadCurrentUser()); return load(loadCurrentUser()); });
   const [activeSet, setActiveSet] = useState(null);
   const [historyView, setHistoryView] = useState(null);
   const [restTimer, setRestTimer] = useState(null);
@@ -447,10 +493,41 @@ function App() {
   const persist = useCallback((fn) => {
     setLog(prev => {
       const next = typeof fn === 'function' ? fn(prev) : fn;
-      save(next);
+      save(currentUser, next);
       return next;
     });
-  }, []);
+  }, [currentUser]);
+
+  const addUser = () => {
+    const name = (prompt("New user name (lowercase, no spaces):") || "").trim().toLowerCase().replace(/\s+/g, "-");
+    if (!name) return;
+    if (!users.includes(name)) {
+      const next = [...users, name];
+      setUsers(next);
+      try { localStorage.setItem(USERS_KEY, JSON.stringify(next)); } catch {}
+    }
+    setCurrentUser(name);
+  };
+
+  // On user switch / first load: swap in that user's local cache, then merge cloud data.
+  const didInitUser = useRef(false);
+  useEffect(() => {
+    try { localStorage.setItem(CURRENT_USER_KEY, currentUser); } catch {}
+    migrateLegacy(currentUser);
+    if (didInitUser.current) setLog(load(currentUser));
+    didInitUser.current = true;
+    let cancelled = false;
+    (async () => {
+      const res = await cloudPull(currentUser);
+      if (cancelled || !res.ok) return;
+      const base = load(currentUser);
+      let changed = false;
+      for (const [k, v] of Object.entries(res.sessions)) if (!base.sessions[k]) { base.sessions[k] = v; changed = true; }
+      for (const [d, w] of Object.entries(res.bodyweight)) if (base.bodyweight[d] == null) { base.bodyweight[d] = w; changed = true; }
+      if (changed) { save(currentUser, base); setLog(base); }
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser]);
 
   useEffect(() => {
     if (restTimer === null) return;
@@ -513,68 +590,83 @@ function App() {
     return () => clearTimeout(t);
   }, [chestOpen]);
 
+  const saveToVault = useCallback(async (key, data, bw, opts = {}) => {
+    const targetKey = key || sk;
+    const targetData = data || session;
+    const targetBw = bw !== undefined ? bw : log.bodyweight;
+    if (!targetKey || !targetData || Object.keys(targetData).length === 0) return;
+    if (!sb) { setSaveStatus(s => ({ ...s, [targetKey]: "error: Supabase not configured" })); return; }
+    setSaveStatus(s => ({ ...s, [targetKey]: "saving" }));
+    try {
+      const { error } = await sb.from("sessions").upsert({
+        user_id: currentUser,
+        session_key: targetKey,
+        data: targetData,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      if (targetBw && typeof targetBw === "object") {
+        const rows = Object.entries(targetBw)
+          .filter(([, w]) => w)
+          .map(([date, weight]) => ({ user_id: currentUser, date, weight: String(weight) }));
+        if (rows.length) {
+          const { error: e2 } = await sb.from("bodyweight").upsert(rows);
+          if (e2) throw e2;
+        }
+      }
+      setSaveStatus(s => ({ ...s, [targetKey]: "saved" }));
+      if (!opts.silent) {
+        setEmailSent(prev => ({ ...prev, [targetKey]: true }));
+      }
+    } catch (e) {
+      setSaveStatus(s => ({ ...s, [targetKey]: `error: ${e.message || "save failed"}` }));
+    }
+  }, [sk, session, log.bodyweight, currentUser]);
+
   useEffect(() => {
     if (!sessionComplete || autoSavedRef.current[sk] || Object.keys(session).length === 0) return;
     autoSavedRef.current[sk] = true;
     saveToVault(sk, session, log.bodyweight, { silent: true });
   }, [sessionComplete, sk, session, log.bodyweight, saveToVault]);
 
-  const saveToVault = useCallback(async (key, data, bw, opts = {}) => {
-    const targetKey = key || sk;
-    const targetData = data || session;
-    const targetBw = bw !== undefined ? bw : log.bodyweight;
-    if (!targetKey || !targetData || Object.keys(targetData).length === 0) return;
-    setSaveStatus(s => ({ ...s, [targetKey]: "saving" }));
-    try {
-      const resp = await fetch("/api/save-session", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionKey: targetKey, sessionData: targetData, bodyweight: targetBw }),
-      });
-      if (!resp.ok) throw new Error((await resp.text()) || `HTTP ${resp.status}`);
-      setSaveStatus(s => ({ ...s, [targetKey]: "saved" }));
-      if (!opts.silent) {
-        setEmailSent(prev => ({ ...prev, [targetKey]: true }));
-      }
-    } catch (e) {
-      setSaveStatus(s => ({ ...s, [targetKey]: `error: ${e.message}` }));
-    }
-  }, [sk, session, log.bodyweight]);
-
   const syncWithVault = async () => {
-    if (!confirm("Sync with vault now? Local sessions will be pushed, then missing remote sessions will be merged back in.")) return;
+    if (!sb) { setSyncStatus({ phase: "error", error: "Supabase not configured" }); return; }
+    if (!confirm("Sync now? Local sessions are pushed to the cloud, then any missing cloud sessions are merged back in.")) return;
     setSyncStatus({ phase: "pushing" });
     try {
-      // Push all local sessions
-      const sessionKeys = Object.keys(log.sessions);
+      // Push all local sessions in one upsert
+      const rows = Object.keys(log.sessions)
+        .filter(k => log.sessions[k] && Object.keys(log.sessions[k]).length > 0)
+        .map(k => ({ user_id: currentUser, session_key: k, data: log.sessions[k], updated_at: new Date().toISOString() }));
       let pushed = 0;
-      for (const k of sessionKeys) {
-        const data = log.sessions[k];
-        if (!data || Object.keys(data).length === 0) continue;
-        const resp = await fetch("/api/save-session", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ sessionKey: k, sessionData: data, bodyweight: log.bodyweight }),
-        });
-        if (resp.ok) pushed++;
+      if (rows.length) {
+        const { error } = await sb.from("sessions").upsert(rows);
+        if (error) throw error;
+        pushed = rows.length;
       }
+      const bwRows = Object.entries(log.bodyweight || {})
+        .filter(([, w]) => w)
+        .map(([date, weight]) => ({ user_id: currentUser, date, weight: String(weight) }));
+      if (bwRows.length) {
+        const { error } = await sb.from("bodyweight").upsert(bwRows);
+        if (error) throw error;
+      }
+
       setSyncStatus({ phase: "pulling" });
-      // Pull remote
-      const resp = await fetch("/api/get-data");
-      if (!resp.ok) throw new Error((await resp.text()) || `HTTP ${resp.status}`);
-      const remote = await resp.json();
+      const res = await cloudPull(currentUser);
+      if (!res.ok) throw new Error(res.error);
       let added = 0;
       persist(prev => {
         const n = JSON.parse(JSON.stringify(prev));
-        for (const [k, v] of Object.entries(remote.sessions || {})) {
+        for (const [k, v] of Object.entries(res.sessions)) {
           if (!n.sessions[k]) { n.sessions[k] = v; added++; }
         }
-        for (const [d, w] of Object.entries(remote.bodyweight || {})) {
-          if (!n.bodyweight[d]) { n.bodyweight[d] = w; }
+        for (const [d, w] of Object.entries(res.bodyweight)) {
+          if (n.bodyweight[d] == null) { n.bodyweight[d] = w; }
         }
         return n;
       });
-      setSyncStatus({ phase: "done", pushed, pulled: added, remoteTotal: remote.meta?.sessionCount ?? 0 });
+      setSyncStatus({ phase: "done", pushed, pulled: added, remoteTotal: Object.keys(res.sessions).length });
       setTimeout(() => setSyncStatus(null), 4000);
     } catch (e) {
       setSyncStatus({ phase: "error", error: e.message });
@@ -722,10 +814,16 @@ function App() {
     setRestTimer(null); setRestLeft(0);
   };
 
-  const clearAllData = () => {
-    if (!confirm("Delete ALL workout history and bodyweight data from this device? This cannot be undone.")) return;
+  const clearAllData = async () => {
+    if (!confirm(`Delete ALL workout history and bodyweight data for "${currentUser}" — both on this device and in the cloud? This cannot be undone.`)) return;
     if (!confirm("Are you absolutely sure? Everything will be erased.")) return;
-    localStorage.removeItem(SK);
+    localStorage.removeItem(userKey(currentUser));
+    if (sb) {
+      try {
+        await sb.from("sessions").delete().eq("user_id", currentUser);
+        await sb.from("bodyweight").delete().eq("user_id", currentUser);
+      } catch (e) { console.error("cloud clear failed", e); }
+    }
     setLog({ sessions: {}, bodyweight: {} });
     setShowEmailBanner(false);
     setEmailSent({});
@@ -1458,13 +1556,29 @@ function App() {
           <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "#555", fontFamily: "monospace" }}>{fmtDate(new Date())}</div>
           <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Strength Tracker</h1>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <select
+            value={currentUser}
+            onChange={e => { if (e.target.value === "__add__") addUser(); else setCurrentUser(e.target.value); }}
+            title="Switch user"
+            style={{ background: "#1A1A1A", border: "1px solid #3A3A2A", color: "#CB8", borderRadius: 6, padding: "6px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}
+          >
+            {users.map(u => <option key={u} value={u}>{u}</option>)}
+            <option value="__add__">+ add user…</option>
+          </select>
           <button onClick={() => setOverviewView(true)} title="Cross-exercise history and bodyweight trends" style={{ background: "#1A1A1A", border: "1px solid #2A2A3A", color: "#9AC", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Overview</button>
           <button onClick={syncWithVault} title="Push local sessions to the vault and pull any missing ones back" style={{ background: "#1A1A1A", border: "1px solid #2A3A4A", color: "#7AB", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>{syncStatus?.phase === "pushing" ? "Pushing…" : syncStatus?.phase === "pulling" ? "Pulling…" : "Sync"}</button>
           <button onClick={generateMockData} title="Load 30 mock sessions across the past ~10 weeks" style={{ background: "#1A1A1A", border: "1px solid #2A3A2A", color: "#6A8" , borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Demo</button>
           <button onClick={clearAllData} title="Clear all local data" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
         </div>
       </div>
+
+      {/* Backend not configured warning */}
+      {!sb && (
+        <div style={{ background: "#2A1E0E", border: "1px solid #5A4A2A", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#DCB", fontFamily: "monospace" }}>
+          Cloud sync disabled — set SUPABASE_URL and SUPABASE_ANON_KEY in index.html. Data is saved on this device only.
+        </div>
+      )}
 
       {/* Sync status toast */}
       {syncStatus?.phase === "done" && (

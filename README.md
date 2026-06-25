@@ -1,6 +1,6 @@
 # Strength Tracker
 
-A mobile-first workout tracker for a 3-day full body strength program. Built as a single HTML file — no build tools, no dependencies to install, no backend. Designed to be used on your phone at the gym.
+A mobile-first workout tracker for a 3-day full body strength program. Built as a single HTML file — no build step. Data is stored locally and synced to a free Supabase backend so it's durable across devices. Designed to be used on your phone at the gym.
 
 ## Program Overview
 
@@ -12,14 +12,48 @@ This is a 3-day full body intermediate strength program on a 7-week cycle:
 
 Train any 3 non-consecutive days per week (e.g. Mon/Wed/Fri).
 
-## Deploy to GitHub Pages
+## Backend Setup (Supabase — free, ~3 minutes)
 
-1. Create a new repository on GitHub (e.g. `strength-tracker`)
-2. Upload all three files from this repo: `index.html`, `README.md`, `.nojekyll`
-3. Go to **Settings → Pages**
-4. Under "Build and deployment", set Source to **Deploy from a branch**
-5. Select the **main** branch and **/ (root)** folder, then click **Save**
-6. Wait about 60 seconds. Your app will be live at `https://<your-username>.github.io/strength-tracker/`
+The app talks directly to a Supabase Postgres database over its REST API. There is no server code to maintain.
+
+1. Go to [supabase.com](https://supabase.com), sign in, and create a **New project** (any name/region; set a DB password).
+2. Open **Project Settings → API** and copy the **Project URL** and the **anon public** key.
+3. Open **SQL Editor → New query**, paste the SQL below, and click **Run**:
+
+   ```sql
+   create table sessions (
+     user_id text not null,
+     session_key text not null,
+     data jsonb not null,
+     updated_at timestamptz not null default now(),
+     primary key (user_id, session_key)
+   );
+   create table bodyweight (
+     user_id text not null,
+     date text not null,
+     weight text not null,
+     updated_at timestamptz not null default now(),
+     primary key (user_id, date)
+   );
+   alter table sessions enable row level security;
+   alter table bodyweight enable row level security;
+   create policy "anon all sessions" on sessions for all to anon using (true) with check (true);
+   create policy "anon all bodyweight" on bodyweight for all to anon using (true) with check (true);
+   ```
+
+4. In `index.html`, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` near the top of the script block. (The anon key is safe to commit — it's a public client key.)
+
+> **Note on access:** with no login, the anon policies above let anyone with the URL read/write any user's rows. That's fine for a private personal app. When you need real per-user isolation, swap to Supabase Auth and tighten the RLS policies to `auth.uid()`.
+
+## Users
+
+There's no login. A dropdown in the header lets you pick the active user (default `alex`); each user's data is namespaced by their name. Choose **+ add user…** in the dropdown to add another. Switching users loads that user's data from the cloud automatically.
+
+## Deploy to Netlify
+
+1. Connect this repo to Netlify (or drag-and-drop the folder).
+2. `netlify.toml` publishes the repo root as a static site — no build command, no functions.
+3. Deploys happen automatically from the **main** branch.
 
 ## Install on Your iPhone
 
@@ -83,9 +117,14 @@ If you need to start a workout over, tap **Reset** in the progress bar area (onl
 
 ## Data Storage
 
-All data is stored in your phone's browser `localStorage`. It persists between visits — you don't need an account or internet connection to use the tracker once the page is loaded.
+Data is stored two ways:
 
-**Important**: If you clear your Safari data or delete the home screen bookmark without visiting the URL again, your data will be lost. Use the **Export** button in the top-right corner periodically to download a JSON backup of all your workout history.
+- **Locally** in your phone's browser `localStorage`, so the app works offline and is instant.
+- **In the cloud** (Supabase) whenever a session completes or you tap **Sync**, so it's durable and available on any device.
+
+On load, the app pulls your cloud data and merges in anything missing locally. The **Sync** button does a full two-way sync: it pushes all local sessions up, then pulls any missing cloud sessions back down. If `SUPABASE_URL`/`SUPABASE_ANON_KEY` aren't set, the app still works fully in local-only mode and shows a banner.
+
+**Clear All** wipes the current user's data both locally and in the cloud.
 
 ## Customize the Program
 
