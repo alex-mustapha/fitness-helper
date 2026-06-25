@@ -17,7 +17,7 @@ A bottom tab bar switches between three views that all share the same user and d
 - **Copy daily summary → Claude** — one button that puts lifts + macros + weight trend on your clipboard in a single paste, instead of two separate exports.
 
 ### 🏋 Train — the strength tracker
-A 3-day full body program (Day A squat / Day B press / Day C deadlift) on a 7-week cycle. Log sets with an auto rest timer, see last session and estimated 1RM with a live PR flag, inline per-exercise trend sparklines, optional cardio blocks with intensity guidance, exercise swaps/accessories, and a cross-exercise **Overview** with bodyweight and cardio analytics.
+A 3-day **Push / Pull / Legs** split that eases in (lighter leg day, conservative starting volume). Each training day includes a **required cardio block** — easy steady-state (Z2) on Push/Pull, high-intensity intervals (Z4) on Legs; a session isn't complete until cardio has a duration logged (you can still End workout early). Log sets with an auto rest timer, see last session and estimated 1RM with a live PR flag, inline per-exercise trend sparklines, exercise substitutes and editable set/rep schemes, and a cross-exercise **Overview** with bodyweight, cardio, and Recent Sessions analytics.
 
 ### 🍳 Eat — the keto helper
 - **Live macro tracker** — search a food, pick the match, dial in the portion; macros come from a built-in 134-food USDA-sourced database. Logged foods persist per day and count against your carb/protein/fat targets (editable inline).
