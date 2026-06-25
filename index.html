@@ -394,7 +394,7 @@ const migrateLegacy = (u) => {
 };
 
 // Static user list (no login). Add a user by editing this array, then redeploy.
-const USERS = ["alex"];
+const USERS = ["alex", "demo"];
 const CURRENT_USER_KEY = "st-current-user";
 const loadCurrentUser = () => {
   const saved = localStorage.getItem(CURRENT_USER_KEY);
@@ -510,7 +510,6 @@ function App() {
   const [editingScheme, setEditingScheme] = useState(null);
   const [draftScheme, setDraftScheme] = useState({ sets: "", reps: "" });
   const [saveStatus, setSaveStatus] = useState({});
-  const [syncStatus, setSyncStatus] = useState(null);
   const [overviewView, setOverviewView] = useState(false);
   const [chestOpen, setChestOpen] = useState(false);
   const prevCompleteRef = useRef({});
@@ -644,50 +643,6 @@ function App() {
     autoSavedRef.current[sk] = true;
     saveToVault(sk, session, log.bodyweight, { silent: true });
   }, [sessionComplete, sk, session, log.bodyweight, saveToVault]);
-
-  const syncWithVault = async () => {
-    if (!sb) { setSyncStatus({ phase: "error", error: "Supabase not configured" }); return; }
-    if (!confirm("Sync now? Local sessions are pushed to the cloud, then any missing cloud sessions are merged back in.")) return;
-    setSyncStatus({ phase: "pushing" });
-    try {
-      // Push all local sessions in one upsert
-      const rows = Object.keys(log.sessions)
-        .filter(k => log.sessions[k] && Object.keys(log.sessions[k]).length > 0)
-        .map(k => ({ user_id: currentUser, session_key: k, data: log.sessions[k], updated_at: new Date().toISOString() }));
-      let pushed = 0;
-      if (rows.length) {
-        const { error } = await sb.from("sessions").upsert(rows);
-        if (error) throw error;
-        pushed = rows.length;
-      }
-      const bwRows = Object.entries(log.bodyweight || {})
-        .filter(([, w]) => w)
-        .map(([date, weight]) => ({ user_id: currentUser, date, weight: String(weight) }));
-      if (bwRows.length) {
-        const { error } = await sb.from("bodyweight").upsert(bwRows);
-        if (error) throw error;
-      }
-
-      setSyncStatus({ phase: "pulling" });
-      const res = await cloudPull(currentUser);
-      if (!res.ok) throw new Error(res.error);
-      let added = 0;
-      persist(prev => {
-        const n = JSON.parse(JSON.stringify(prev));
-        for (const [k, v] of Object.entries(res.sessions)) {
-          if (!n.sessions[k]) { n.sessions[k] = v; added++; }
-        }
-        for (const [d, w] of Object.entries(res.bodyweight)) {
-          if (n.bodyweight[d] == null) { n.bodyweight[d] = w; }
-        }
-        return n;
-      });
-      setSyncStatus({ phase: "done", pushed, pulled: added, remoteTotal: Object.keys(res.sessions).length });
-      setTimeout(() => setSyncStatus(null), 4000);
-    } catch (e) {
-      setSyncStatus({ phase: "error", error: e.message });
-    }
-  };
 
   const updateSet = (exId, si, field, value) => {
     persist(prev => {
@@ -914,123 +869,6 @@ function App() {
       } catch (e) { console.error("cloud clear failed", e); }
     }
     setLog({ sessions: {}, bodyweight: {} });
-    setShowEmailBanner(false);
-    setEmailSent({});
-    setActiveSet(null);
-    setRestTimer(null); setRestLeft(0);
-    setHistoryView(null);
-  };
-
-  const generateMockData = () => {
-    if (!confirm("Replace all current data with 30 mock sessions across the past ~10 weeks? This cannot be undone.")) return;
-
-    const targets = {
-      a1: { startW: 165, endW: 200, baseReps: 5 },
-      a2: { startW: 135, endW: 170, baseReps: 7 },
-      a3: { startW: 115, endW: 145, baseReps: 9 },
-      a4: { startW: 50,  endW: 70,  baseReps: 11 },
-      a5: { startW: 30,  endW: 45,  baseReps: 18 },
-      a6: { startW: 0,   endW: 0,   baseReps: 40 },
-      b1: { startW: 85,  endW: 115, baseReps: 6 },
-      b2: { startW: 235, endW: 295, baseReps: 5 },
-      b3: { startW: 45,  endW: 65,  baseReps: 9 },
-      b4: { startW: 105, endW: 135, baseReps: 11 },
-      b5: { startW: 260, endW: 330, baseReps: 11 },
-      b6: { startW: 25,  endW: 40,  baseReps: 12 },
-      c1: { startW: 255, endW: 320, baseReps: 4 },
-      c2: { startW: 85,  endW: 115, baseReps: 9 },
-      c3: { startW: 50,  endW: 75,  baseReps: 11 },
-      c4: { startW: 110, endW: 140, baseReps: 11 },
-      c5: { startW: 25,  endW: 50,  baseReps: 10 },
-      c6: { startW: 0,   endW: 0,   baseReps: 12 },
-    };
-
-    const noise = (range) => (Math.random() - 0.5) * range;
-    const roundTo = (n, step) => Math.round(n / step) * step;
-    const pad2 = (n) => String(n).padStart(2, "0");
-
-    const sessions = {};
-    const bodyweight = {};
-    const totalSessions = 30;
-    const totalDaysSpan = 68;
-    const today = new Date();
-    const dayPattern = ["a", "b", "c"];
-
-    for (let i = 0; i < totalSessions; i++) {
-      const progress = i / (totalSessions - 1);
-      const dateOffset = totalDaysSpan - Math.round(progress * totalDaysSpan);
-      const sessionDate = new Date(today);
-      sessionDate.setDate(today.getDate() - dateOffset);
-      const dateKey = `${sessionDate.getFullYear()}-${pad2(sessionDate.getMonth()+1)}-${pad2(sessionDate.getDate())}`;
-      const dayId = dayPattern[i % 3];
-      const sessionKey = `${dateKey}-${dayId}`;
-
-      const dayDef = DAYS.find(d => d.id === dayId);
-      const sessionData = {};
-
-      for (const ex of dayDef.exercises) {
-        const t = targets[ex.id];
-        if (!t) continue;
-        const baseW = t.startW + (t.endW - t.startW) * progress;
-        const baseR = t.baseReps + Math.round(progress * 1.2);
-        const sessionWeight = baseW > 0 ? roundTo(baseW + noise(8), 5) : 0;
-        sessionData[ex.id] = {};
-        for (let s = 0; s < ex.sets; s++) {
-          const dropoff = s >= 2 ? Math.max(0, Math.round(Math.random() * 1.2)) : 0;
-          const reps = Math.max(1, baseR + Math.round(noise(2)) - dropoff);
-          sessionData[ex.id][s] = {
-            weight: sessionWeight > 0 ? String(sessionWeight) : "",
-            reps: String(reps),
-            done: true,
-          };
-        }
-        // ~8% chance of last set skipped
-        if (ex.sets > 2 && Math.random() < 0.08) {
-          sessionData[ex.id][ex.sets - 1] = { weight: "", reps: "", done: false };
-        }
-      }
-
-      // Pull-up accessory on Day B (~60% of the time)
-      if (dayId === "b" && Math.random() < 0.6) {
-        sessionData._accessories = ["pull-up"];
-        sessionData["pull-up"] = {};
-        const reps = 5 + Math.round(progress * 4);
-        for (let s = 0; s < 3; s++) {
-          sessionData["pull-up"][s] = {
-            weight: "",
-            reps: String(Math.max(1, reps - s + Math.round(noise(1)))),
-            done: true,
-          };
-        }
-      }
-
-      // Calf raise accessory on Day A (~50% of the time)
-      if (dayId === "a" && Math.random() < 0.5) {
-        sessionData._accessories = ["calf-raise"];
-        sessionData["calf-raise"] = {};
-        const w = roundTo(45 + progress * 35 + noise(10), 5);
-        for (let s = 0; s < 3; s++) {
-          sessionData["calf-raise"][s] = {
-            weight: String(w),
-            reps: String(Math.max(8, 13 + Math.round(noise(3)))),
-            done: true,
-          };
-        }
-      }
-
-      sessionData._ended = true;
-      sessions[sessionKey] = sessionData;
-
-      // Bodyweight every other session: 180 → 174 trend
-      if (i % 2 === 0) {
-        const bw = (180 - progress * 6 + noise(1.2)).toFixed(1);
-        bodyweight[dateKey] = bw;
-      }
-    }
-
-    const newLog = { sessions, bodyweight };
-    save(newLog);
-    setLog(newLog);
     setShowEmailBanner(false);
     setEmailSent({});
     setActiveSet(null);
@@ -1657,9 +1495,7 @@ function App() {
             </select>
           )}
           <button onClick={() => setOverviewView(true)} title="Cross-exercise history and bodyweight trends" style={{ background: "#1A1A1A", border: "1px solid #2A2A3A", color: "#9AC", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Overview</button>
-          <button onClick={syncWithVault} title="Push local sessions to the vault and pull any missing ones back" style={{ background: "#1A1A1A", border: "1px solid #2A3A4A", color: "#7AB", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>{syncStatus?.phase === "pushing" ? "Pushing…" : syncStatus?.phase === "pulling" ? "Pulling…" : "Sync"}</button>
-          <button onClick={generateMockData} title="Load 30 mock sessions across the past ~10 weeks" style={{ background: "#1A1A1A", border: "1px solid #2A3A2A", color: "#6A8" , borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Demo</button>
-          <button onClick={clearAllData} title="Clear all local data" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
+          <button onClick={clearAllData} title="Clear all data for this user (device + cloud)" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
         </div>
       </div>
 
@@ -1667,18 +1503,6 @@ function App() {
       {!sb && (
         <div style={{ background: "#2A1E0E", border: "1px solid #5A4A2A", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#DCB", fontFamily: "monospace" }}>
           Cloud sync disabled — set SUPABASE_URL and SUPABASE_ANON_KEY in index.html. Data is saved on this device only.
-        </div>
-      )}
-
-      {/* Sync status toast */}
-      {syncStatus?.phase === "done" && (
-        <div style={{ background: "#0E2A1E", border: "1px solid #2A5A3A", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#8DC", fontFamily: "monospace" }}>
-          Sync complete · pushed {syncStatus.pushed} · pulled {syncStatus.pulled} new · vault has {syncStatus.remoteTotal} total
-        </div>
-      )}
-      {syncStatus?.phase === "error" && (
-        <div style={{ background: "#2A0E0E", border: "1px solid #5A2A2A", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#F88", fontFamily: "monospace" }}>
-          Sync failed: {syncStatus.error}
         </div>
       )}
 
@@ -1692,10 +1516,10 @@ function App() {
           <div className="email-banner">
             <div style={{ fontSize: 16, fontWeight: 700, color: "#4ade80", marginBottom: 6 }}>Session Complete! 💪</div>
             <div style={{ fontSize: 13, color: "#999", marginBottom: 14 }}>
-              {saving ? "Saving to vault…" : saved ? "Saved to vault ✓" : errored ? "Save failed — tap to retry." : "Saving your workout to permanent storage."}
+              {saving ? "Saving to cloud…" : saved ? "Saved to cloud ✓" : errored ? "Save failed — tap to retry." : "Saving your workout to the cloud."}
             </div>
             <button onClick={() => saveToVault(sk, session, log.bodyweight)} disabled={saving} style={{ width: "100%", padding: "12px", background: saved ? "#1F3A28" : "#4ade80", border: "none", borderRadius: 8, color: saved ? "#8DC" : "#0F0F0F", fontSize: 14, fontWeight: 700, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Saving…" : saved ? "Saved ✓ — save again" : errored ? "Retry save" : "Save to Vault"}
+              {saving ? "Saving…" : saved ? "Saved ✓ — save again" : errored ? "Retry save" : "Save to cloud"}
             </button>
             {errored && <div style={{ fontSize: 11, color: "#F88", marginTop: 6, fontFamily: "monospace" }}>{status.replace("error: ", "")}</div>}
             <button onClick={() => { setShowEmailBanner(false); setEmailSent(prev => ({...prev, [sk]: true})); }} style={{ background: "none", border: "none", color: "#555", fontSize: 11, cursor: "pointer", marginTop: 10, textDecoration: "underline", width: "100%" }}>Dismiss</button>
@@ -1707,7 +1531,7 @@ function App() {
       {sessionComplete && emailSent[sk] && (
         <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
           <button onClick={() => saveToVault(sk, session, log.bodyweight)} style={{ flex: 1, padding: "10px", background: "#1A1A1A", border: "1px solid #333", borderRadius: 8, color: "#888", fontSize: 12, cursor: "pointer" }}>
-            {saveStatus[sk] === "saving" ? "Saving…" : saveStatus[sk] === "saved" ? "Saved ✓ — save again" : "Save to Vault"}
+            {saveStatus[sk] === "saving" ? "Saving…" : saveStatus[sk] === "saved" ? "Saved ✓ — save again" : "Save to cloud"}
           </button>
         </div>
       )}

@@ -154,11 +154,17 @@ If you need to start a workout over, tap **Reset** in the progress bar area (onl
 Data is stored two ways:
 
 - **Locally** in your phone's browser `localStorage`, so the app works offline and is instant.
-- **In the cloud** (Supabase) whenever a session completes or you tap **Sync**, so it's durable and available on any device.
+- **In the cloud** (Supabase) when a session completes, so it's durable and available on any device.
 
-On load, the app pulls your cloud data and merges in anything missing locally. The **Sync** button does a full two-way sync: it pushes all local sessions up, then pulls any missing cloud sessions back down. If `SUPABASE_URL`/`SUPABASE_ANON_KEY` aren't set, the app still works fully in local-only mode and shows a banner.
+On load, the app pulls the current user's cloud data and merges in anything missing locally — so switching users or opening on a new device loads that user's history automatically. Each completed session also saves to the cloud, and you can re-save a finished session from its banner. If `SUPABASE_URL`/`SUPABASE_ANON_KEY` aren't set, the app still works fully in local-only mode and shows a banner.
+
+> Note: cloud save happens on **session complete**. If you log a partial session and don't finish it, it stays on that device until completed.
 
 **Clear All** wipes the current user's data both locally and in the cloud.
+
+### Demo data
+
+There's a built-in **`demo`** user (pick it from the header dropdown) preloaded with ~6 months of realistic mock history — progressive overload across all lifts, cardio blocks, and a bodyweight cut trend — so you can explore History, Overview, trends, and the cardio features without touching your own data.
 
 ## Customize the Program
 
