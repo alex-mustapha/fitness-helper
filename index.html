@@ -1001,33 +1001,47 @@ function App() {
     };
 
     // ── Recent sessions (quick "what did I do lately / what's next" glance) ──
-    const bestSet = (exData) => {
-      let best = null;
-      for (const k of Object.keys(exData)) {
-        if (!/^\d+$/.test(k)) continue;
-        const w = parseFloat(exData[k].weight) || 0;
-        const r = parseInt(exData[k].reps) || 0;
-        if (w === 0 && r === 0) continue;
-        if (!best || w > best.w || (w === best.w && r > best.r)) best = { w, r };
+    const sessionStats = (s) => {
+      let volume = 0, sets = 0; const ex = new Set();
+      for (const id of Object.keys(s)) {
+        if (id.startsWith("_")) continue;
+        const e = s[id]; if (!e || typeof e !== "object") continue;
+        for (const x of Object.keys(e)) {
+          if (!/^\d+$/.test(x)) continue;
+          const r = parseInt(e[x]?.reps) || 0;
+          if (r <= 0) continue;
+          sets++; ex.add(id);
+          volume += (parseFloat(e[x].weight) || 0) * r;
+        }
       }
-      return best;
+      return { volume, sets, exCount: ex.size };
     };
-    const recentSessions = Object.keys(log.sessions)
+    const datedKeys = Object.keys(log.sessions)
       .filter(k => { const s = log.sessions[k]; return s && Object.keys(s).some(id => !id.startsWith("_") && s[id] && typeof s[id] === "object" && Object.keys(s[id]).some(x => /^\d+$/.test(x))); })
-      .sort().reverse().slice(0, 5)
-      .map(k => {
-        const s = log.sessions[k];
-        const dayDef = DAYS.find(d => d.id === k.slice(11));
-        const exes = Object.keys(s)
-          .filter(id => !id.startsWith("_") && s[id] && typeof s[id] === "object" && Object.keys(s[id]).some(x => /^\d+$/.test(x)))
-          .map(id => ({ name: findExerciseMeta(id)?.name || id, bs: bestSet(s[id]) }));
-        const rawC = s._cardio;
-        const cardio = rawC ? ((rawC.starter || rawC.finisher) ? (rawC.finisher || rawC.starter) : rawC) : null;
-        const [yy, mm, dd] = k.slice(0, 10).split("-").map(Number);
-        const now = new Date();
-        const daysAgo = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(yy, mm - 1, dd)) / 86400000);
-        return { key: k, date: k.slice(0, 10), daysAgo, dayDef, exes, cardio };
-      });
+      .sort();
+    const statByKey = {};
+    for (const k of datedKeys) statByKey[k] = sessionStats(log.sessions[k]);
+    const prevSameDay = {}; const lastSeenDay = {};
+    for (const k of datedKeys) { const did = k.slice(11); prevSameDay[k] = lastSeenDay[did] || null; lastSeenDay[did] = k; }
+
+    const recentSessions = datedKeys.slice().reverse().slice(0, 5).map(k => {
+      const s = log.sessions[k];
+      const dayDef = DAYS.find(d => d.id === k.slice(11));
+      const st = statByKey[k];
+      const prevK = prevSameDay[k];
+      let trend = null;
+      if (!prevK) {
+        trend = { first: true };
+      } else if (statByKey[prevK].volume > 0 && st.volume > 0) {
+        trend = { pct: ((st.volume - statByKey[prevK].volume) / statByKey[prevK].volume) * 100, prevDate: prevK.slice(5, 10) };
+      }
+      const rawC = s._cardio;
+      const cardio = rawC ? ((rawC.starter || rawC.finisher) ? (rawC.finisher || rawC.starter) : rawC) : null;
+      const [yy, mm, dd] = k.slice(0, 10).split("-").map(Number);
+      const now = new Date();
+      const daysAgo = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(yy, mm - 1, dd)) / 86400000);
+      return { key: k, date: k.slice(0, 10), daysAgo, dayDef, st, trend, cardio };
+    });
 
     const renderSparkline = (series, color) => {
       if (series.length < 2) return null;
@@ -1131,9 +1145,16 @@ function App() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: rs.dayDef?.color || "#888" }}>{rs.dayDef?.name || rs.key.slice(11)}</span>
                   <span style={{ fontSize: 10, color: "#666", fontFamily: "monospace" }}>{rs.daysAgo === 0 ? "today" : rs.daysAgo === 1 ? "yesterday" : `${rs.daysAgo}d ago`} · {rs.date.slice(5)}</span>
                 </div>
-                <div style={{ fontSize: 11, color: "#9A9A9A", fontFamily: "monospace", lineHeight: 1.55 }}>
-                  {rs.exes.length ? rs.exes.map(e => `${e.name}${e.bs ? ` ${e.bs.w > 0 ? `${e.bs.w}×${e.bs.r}` : `${e.bs.r}r`}` : ""}`).join("  ·  ") : "—"}
+                <div style={{ fontSize: 11, color: "#9A9A9A", fontFamily: "monospace" }}>
+                  {rs.st.exCount} lifts · {rs.st.sets} sets{rs.st.volume > 0 ? ` · ${Math.round(rs.st.volume).toLocaleString()} lb` : ""}
                 </div>
+                {rs.trend && (
+                  rs.trend.first
+                    ? <div style={{ fontSize: 11, color: "#777", fontFamily: "monospace", marginTop: 2 }}>first {rs.dayDef?.name || ""} session</div>
+                    : <div style={{ fontSize: 11, fontFamily: "monospace", marginTop: 2, color: rs.trend.pct >= 0 ? "#4ade80" : "#E0A85A" }}>
+                        {rs.trend.pct >= 0 ? "↑" : "↓"} {Math.abs(rs.trend.pct).toFixed(0)}% volume vs last {rs.dayDef?.name || ""} · {rs.trend.prevDate}
+                      </div>
+                )}
                 {rs.cardio && parseFloat(rs.cardio.duration) > 0 && (
                   <div style={{ fontSize: 11, color: "#3AAFA9", fontFamily: "monospace", marginTop: 3 }}>
                     🏃 {rs.cardio.modality} · {rs.cardio.duration} min{rs.cardio.distance ? ` · ${rs.cardio.distance} mi` : ""}

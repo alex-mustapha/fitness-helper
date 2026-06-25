@@ -149,7 +149,7 @@ Tap the **History** button on any exercise to see your last 10 sessions for that
 
 ### Recent sessions at a glance
 
-The top of the **Overview** screen lists your **last 5 sessions** — which day (Push/Pull/Legs), how long ago, a one-line lift breakdown (top set per exercise), and the cardio you did. Handy for deciding what to train when you walk into the gym (e.g. "last was Legs yesterday and Pull before that → today's Push").
+The top of the **Overview** screen lists your **last 5 sessions** — which day (Push/Pull/Legs), how long ago, a generic summary (lifts · sets · total volume), the **trend vs your previous session of the same style** (e.g. "↑9% volume vs last Push"), and the cardio you did. Handy for deciding what to train when you walk into the gym (e.g. "last was Legs yesterday and Pull before that → today's Push") and seeing at a glance whether you're progressing on each style.
 
 ### Track Your Progress
 
