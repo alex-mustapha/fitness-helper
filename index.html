@@ -850,6 +850,50 @@ function App() {
       .sort().reverse()
       .map(k => ({ date: k.slice(0,10), data: log.sessions[k][exId] }));
 
+  // Trend series for the inline mini-chart: prior sessions (excludes today),
+  // metric = estimated 1RM (falls back to reps for bodyweight moves).
+  const getTrend = (exId, scope = "day") => {
+    const pts = [];
+    for (const k of Object.keys(log.sessions).sort()) {
+      if (k === sk) continue;
+      if (scope === "day" && !k.endsWith(`-${day.id}`)) continue;
+      const data = log.sessions[k]?.[exId];
+      if (!data || !Object.keys(data).some(s => /^\d+$/.test(s))) continue;
+      const e1 = computeMetric(data, "e1rm");
+      const val = e1 > 0 ? e1 : computeMetric(data, "reps");
+      if (val > 0) pts.push({ date: k.slice(0, 10), value: val });
+    }
+    return pts;
+  };
+
+  const renderMiniTrend = (series) => {
+    if (series.length < 2) return null;
+    const n = series.length;
+    const mean = series.reduce((a, d) => a + d.value, 0) / n;
+    const mx = (n - 1) / 2;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (i - mx) * (series[i].value - mean); den += (i - mx) * (i - mx); }
+    const slope = den ? num / den : 0;          // metric units per session
+    const flat = mean * 0.003;                  // deadzone so tiny drift reads as "flat"
+    const color = slope > flat ? "#4ade80" : slope < -flat ? "#E0A85A" : "#777";
+    const icon = slope > flat ? "↗" : slope < -flat ? "↘" : "→";
+    const label = slope > flat ? "improving" : slope < -flat ? "slipping" : "flat";
+    const net = Math.round(series[n - 1].value - series[0].value);
+    const w = 64, h = 20;
+    const vals = series.map(d => d.value);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = max - min || 1;
+    const pts = series.map((d, i) => `${((i / (n - 1)) * w).toFixed(1)},${(h - 2 - ((d.value - min) / range) * (h - 4)).toFixed(1)}`);
+    return (
+      <div style={{ padding: "0 14px 8px", display: "flex", alignItems: "center", gap: 8 }}>
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", flexShrink: 0 }}>
+          <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontSize: 10, color, fontFamily: "monospace" }}>{icon} {label}{net !== 0 ? ` (${net > 0 ? "+" : ""}${net})` : ""} · {n}</span>
+      </div>
+    );
+  };
+
   const clearToday = () => {
     if (!confirm(`Clear today's logged sets for ${day.name}?`)) return;
     persist(prev => { const n = JSON.parse(JSON.stringify(prev)); delete n.sessions[sk]; return n; });
@@ -1872,6 +1916,8 @@ function App() {
                   </div>
                 );
               })()}
+
+              {renderMiniTrend(getTrend(slot.id, slot._scope || "day"))}
 
               <div style={{ padding: "8px 14px 14px" }}>
                 {Array.from({ length: slot.sets }, (_, si) => {

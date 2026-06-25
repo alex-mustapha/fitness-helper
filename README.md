@@ -118,6 +118,8 @@ Below each exercise you'll see what you lifted last time (e.g. "Last (2026-06-02
 
 Right under that, a **🎯 Last est 1RM** line shows your estimated one-rep max from that session (Epley formula) plus your top set — the number to beat. As you complete sets this session, it shows your current estimated 1RM live, and flips to a green **↑ PR!** flag the moment you exceed last time. This makes "push above last time" concrete at a glance.
 
+Below that is an **inline trend sparkline** — the same kind of chart as the History view, but right on the exercise card. It plots your estimated 1RM across prior sessions and labels the direction: **↗ improving**, **→ flat**, or **↘ slipping** (with the net change and session count). So the moment you start a workout you can see which lifts are progressing and which have stalled, without opening History. Exercises with fewer than two logged sessions show no trend yet.
+
 ### Edit a Completed Set
 
 If you entered the wrong weight or reps, tap **Edit** on any completed set to fix it.
