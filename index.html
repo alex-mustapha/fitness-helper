@@ -550,7 +550,38 @@ const trainingToday = (log, tk) => {
   return null;
 };
 
+// ─── Demo data ───────────────────────────────────────────────────────
+// The `demo` user's strength history is seeded in Supabase; its diet half is
+// generated here so Today/Eat are populated too. The demo "eats the plan":
+// for the past 2 weeks, each day's logged foods are that weekday's planned
+// meals, giving realistic plan-aligned macro totals.
+const demoDietFoodLog = () => {
+  const fl = {};
+  const today = new Date();
+  for (let back = 0; back < 14; back++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - back);
+    const plan = PLAN[(d.getDay() + 6) % 7];
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    fl[key] = { entries: plan.meals.map(m => ({ label: m.name, portion: "1 serving", c: m.carbs || 0, p: m.protein || 0, f: m.fat || 0 })) };
+  }
+  return fl;
+};
+const ensureDemoDiet = (d, user) => {
+  if (user === "demo" && (!d.foodLog || Object.keys(d.foodLog).length === 0)) d.foodLog = demoDietFoodLog();
+  return d;
+};
+
 // ─── Reusable bits ───────────────────────────────────────────────────
+function UserMenu({ currentUser, setCurrentUser }) {
+  if (USERS.length <= 1) return null;
+  return (
+    <select value={currentUser} onChange={e => setCurrentUser(e.target.value)} title="Switch user"
+      style={{ background: "#1A1A1A", border: "1px solid #3A3A2A", color: "#CB8", borderRadius: 6, padding: "6px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
+      {USERS.map(u => <option key={u} value={u}>{u}</option>)}
+    </select>
+  );
+}
+
 function Ring({ value, target, color, label, sub, over }) {
   const r = 30, circ = 2 * Math.PI * r;
   const pct = target ? Math.min(value / target * 100, 100) : 0;
@@ -860,16 +891,19 @@ function CravingBusters() {
 }
 
 // ─── Eat tab ─────────────────────────────────────────────────────────
-function EatView({ targets, foodToday, onAdd, onRemove, onClear, onSetTargets }) {
+function EatView({ targets, foodToday, onAdd, onRemove, onClear, onSetTargets, currentUser, setCurrentUser }) {
   const [editT, setEditT] = useState(false);
   const [draft, setDraft] = useState(targets);
   const tIn = { width: 64, background: "#0E0E0E", border: "1px solid #2A2A2A", borderRadius: 8, padding: "8px 10px", color: "#E8E8E8", fontFamily: "monospace", fontSize: 14 };
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 96px" }}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={ebStyle}>{fmtDate(new Date())}</div>
-        <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Eat</h1>
-        <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Keto plan · {targets.carb}g net-carb target. Track it, plan it, beat cravings.</div>
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div>
+          <div style={ebStyle}>{fmtDate(new Date())}</div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Eat</h1>
+          <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Keto plan · {targets.carb}g net-carb target. Track it, plan it, beat cravings.</div>
+        </div>
+        <UserMenu currentUser={currentUser} setCurrentUser={setCurrentUser} />
       </div>
 
       <div style={{ ...cardStyle, padding: "12px 14px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -903,7 +937,7 @@ function EatView({ targets, foodToday, onAdd, onRemove, onClear, onSetTargets })
 }
 
 // ─── Today tab (the synergy view) ────────────────────────────────────
-function TodayView({ log, tk, targets, foodToday, currentUser, onLogWeight, onGoTrain, onGoEat }) {
+function TodayView({ log, tk, targets, foodToday, currentUser, setCurrentUser, onLogWeight, onGoTrain, onGoEat }) {
   const [bw, setBw] = useState((log.bodyweight && log.bodyweight[tk]) || "");
   useEffect(() => { setBw((log.bodyweight && log.bodyweight[tk]) || ""); }, [tk, log.bodyweight]);
   const trained = trainingToday(log, tk);
@@ -953,9 +987,12 @@ function TodayView({ log, tk, targets, foodToday, currentUser, onLogWeight, onGo
   const proteinShort = p < proteinGoal;
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 96px" }}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={ebStyle}>{fmtDate(new Date())}</div>
-        <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Today</h1>
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div>
+          <div style={ebStyle}>{fmtDate(new Date())}</div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700 }}>Today</h1>
+        </div>
+        <UserMenu currentUser={currentUser} setCurrentUser={setCurrentUser} />
       </div>
 
       {/* Bodyweight + training status */}
@@ -1032,7 +1069,7 @@ function App() {
     setMaxHRState(val);
     try { if (val) localStorage.setItem(`st-maxhr::${currentUser}`, val); else localStorage.removeItem(`st-maxhr::${currentUser}`); } catch {}
   };
-  const [log, setLog] = useState(() => { migrateLegacy(loadCurrentUser()); return load(loadCurrentUser()); });
+  const [log, setLog] = useState(() => { migrateLegacy(loadCurrentUser()); return ensureDemoDiet(load(loadCurrentUser()), loadCurrentUser()); });
   const [activeSet, setActiveSet] = useState(null);
   const [historyView, setHistoryView] = useState(null);
   const [restTimer, setRestTimer] = useState(null);
@@ -1066,7 +1103,7 @@ function App() {
   useEffect(() => {
     try { localStorage.setItem(CURRENT_USER_KEY, currentUser); } catch {}
     migrateLegacy(currentUser);
-    if (didInitUser.current) { setLog(load(currentUser)); setMaxHRState(localStorage.getItem(`st-maxhr::${currentUser}`) || ""); }
+    if (didInitUser.current) { setLog(ensureDemoDiet(load(currentUser), currentUser)); setMaxHRState(localStorage.getItem(`st-maxhr::${currentUser}`) || ""); }
     didInitUser.current = true;
     let cancelled = false;
     (async () => {
@@ -1079,6 +1116,7 @@ function App() {
       if (!base.foodLog) base.foodLog = {};
       for (const [d, v] of Object.entries(res.foodLog || {})) if (!base.foodLog[d]) { base.foodLog[d] = v; changed = true; }
       if (res.dietTargets && !localStorage.getItem(userKey(currentUser) + "::dietTargetsTouched")) { base.dietTargets = res.dietTargets; changed = true; }
+      if (currentUser === "demo" && Object.keys(base.foodLog).length === 0) { base.foodLog = demoDietFoodLog(); changed = true; }
       if (changed) { save(currentUser, base); setLog(base); }
     })();
     return () => { cancelled = true; };
@@ -1508,11 +1546,11 @@ function App() {
 
   // ── Tab routing: Today / Eat render here; Train falls through to the views below ──
   if (activeTab === "eat") return (<>
-    <EatView targets={dietTargets} foodToday={foodToday} onAdd={addFood} onRemove={removeFood} onClear={clearFoodDay} onSetTargets={setDietTargets} />
+    <EatView targets={dietTargets} foodToday={foodToday} onAdd={addFood} onRemove={removeFood} onClear={clearFoodDay} onSetTargets={setDietTargets} currentUser={currentUser} setCurrentUser={setCurrentUser} />
     <BottomTabs active="eat" onChange={setActiveTab} />
   </>);
   if (activeTab === "today") return (<>
-    <TodayView log={log} tk={tk} targets={dietTargets} foodToday={foodToday} currentUser={currentUser} onLogWeight={logBodyweight} onGoTrain={() => setActiveTab("train")} onGoEat={() => setActiveTab("eat")} />
+    <TodayView log={log} tk={tk} targets={dietTargets} foodToday={foodToday} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogWeight={logBodyweight} onGoTrain={() => setActiveTab("train")} onGoEat={() => setActiveTab("eat")} />
     <BottomTabs active="today" onChange={setActiveTab} />
   </>);
 

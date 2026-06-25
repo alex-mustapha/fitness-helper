@@ -50,7 +50,7 @@ Everything for a user lives under one namespaced `localStorage` key as `{ sessio
 
 ## Users
 
-No login. A dropdown in the Train header picks the active user (default `alex`); each user's data is namespaced. A seeded **`demo`** user has ~6 months of mock strength history for exploring trends.
+No login. A dropdown in **every tab's** header picks the active user (default `alex`); each user's data is namespaced. A seeded **`demo`** user lets you explore with mock data: ~6 months of strength history + a bodyweight cut (from Supabase), plus a diet half generated on the client — the demo "eats the plan," so the last two weeks of food logs mirror each weekday's planned keto meals. Switching to `demo` from any tab populates Today, Train, and Eat at once.
 
 ## Deploy to GitHub Pages
 
