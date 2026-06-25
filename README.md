@@ -34,6 +34,16 @@ Each cardio block shows a guidance panel for the chosen target intensity so you 
 
 Note: a web app cannot read Apple Watch / HealthKit data directly (no browser API for it), so this is self-check guidance rather than an automatic HR feed. Glance at your watch and compare to the target range.
 
+### Cardio analytics (Overview)
+
+The **Overview** screen has a Cardio panel with general progress metrics:
+
+- **Summary** — total cardio sessions, total minutes, total distance, and average RPE.
+- **Weekly minutes** — a chart of cardio volume per week, so you can see consistency at a glance.
+- **Pace by activity** — for each modality with distance logged, your pace (min/mi) with a trend label (**improving / flat / slipping**, where *lower pace = faster = improving*).
+
+Because cardio is modality-specific, pace is tracked **per activity** (a run pace and a bike pace aren't comparable). Without heart-rate data, "pace at a given effort" plus weekly volume are the most honest improvement signals.
+
 **Programming it without killing your lifts:** the main risk is the interference effect — hard cardio too close to heavy squats/deadlifts hurts strength and recovery. A sensible default:
 
 - **2× Zone 2 / easy steady-state** (30–45 min, incline walk or bike) on **off-days** — aids recovery rather than hurting it.

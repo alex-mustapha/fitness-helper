@@ -1001,6 +1001,57 @@ function App() {
     }).filter(r => r.series.length > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
 
+    // ── Cardio analytics ──
+    const cardioEntries = [];
+    for (const sKey of Object.keys(log.sessions).sort()) {
+      const c = log.sessions[sKey]?._cardio;
+      if (!c) continue;
+      for (const pos of ["starter", "finisher"]) {
+        const e = c[pos];
+        if (!e) continue;
+        const dur = parseFloat(e.duration) || 0;
+        if (dur <= 0) continue;
+        cardioEntries.push({
+          date: sKey.slice(0, 10), modality: e.modality || "Other",
+          duration: dur, distance: parseFloat(e.distance) || 0, rpe: parseFloat(e.rpe) || 0,
+        });
+      }
+    }
+    const cardioSummary = cardioEntries.length ? (() => {
+      const totalMin = cardioEntries.reduce((a, e) => a + e.duration, 0);
+      const totalDist = cardioEntries.reduce((a, e) => a + e.distance, 0);
+      const rpes = cardioEntries.filter(e => e.rpe > 0).map(e => e.rpe);
+      const avgRpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : 0;
+      const t0 = new Date(cardioEntries[0].date).getTime();
+      const wk = {};
+      for (const e of cardioEntries) {
+        const b = Math.floor((new Date(e.date).getTime() - t0) / (7 * 86400000));
+        wk[b] = (wk[b] || 0) + e.duration;
+      }
+      const weekSeries = Object.keys(wk).map(Number).sort((a, b) => a - b)
+        .map(b => ({ date: new Date(t0 + b * 7 * 86400000).toISOString().slice(0, 10), value: Math.round(wk[b]) }));
+      const byMod = {};
+      for (const e of cardioEntries) {
+        if (e.distance > 0 && e.duration > 0) (byMod[e.modality] = byMod[e.modality] || []).push({ date: e.date, value: e.duration / e.distance });
+      }
+      const paceRows = Object.keys(byMod).filter(m => byMod[m].length >= 2).map(m => ({ modality: m, series: byMod[m] }))
+        .sort((a, b) => b.series.length - a.series.length);
+      return { sessions: cardioEntries.length, totalMin, totalDist, avgRpe, weekSeries, paceRows };
+    })() : null;
+
+    const fmtPace = (p) => `${Math.floor(p)}:${String(Math.round((p - Math.floor(p)) * 60)).padStart(2, "0")}`;
+    const classifyPace = (series) => {
+      const n = series.length;
+      const mean = series.reduce((a, d) => a + d.value, 0) / n;
+      const mx = (n - 1) / 2;
+      let num = 0, den = 0;
+      for (let i = 0; i < n; i++) { num += (i - mx) * (series[i].value - mean); den += (i - mx) * (i - mx); }
+      const slope = den ? num / den : 0, flat = mean * 0.003;
+      if (slope < -flat) return { label: "improving", color: "#4ade80" };  // lower pace = faster
+      if (slope > flat) return { label: "slipping", color: "#E0A85A" };
+      return { label: "flat", color: "#777" };
+    };
+
     const renderSparkline = (series, color) => {
       if (series.length < 2) return null;
       const w = 80, h = 22;
@@ -1127,6 +1178,56 @@ function App() {
                 <div style={{ height: 100, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 12 }}>Log at least 2 bodyweight entries to chart.</div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Cardio */}
+        <div style={{ fontSize: 10, color: "#666", letterSpacing: 1, fontFamily: "monospace", marginBottom: 8 }}>CARDIO</div>
+        {!cardioSummary && (
+          <div style={{ background: "#151515", border: "1px solid #222", borderRadius: 10, padding: "16px", marginBottom: 24, color: "#666", fontSize: 13, textAlign: "center" }}>No cardio logged yet.</div>
+        )}
+        {cardioSummary && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {[
+                { label: "SESSIONS", val: cardioSummary.sessions },
+                { label: "TOTAL MIN", val: Math.round(cardioSummary.totalMin).toLocaleString() },
+                { label: "DISTANCE", val: cardioSummary.totalDist > 0 ? `${cardioSummary.totalDist.toFixed(1)}mi` : "—" },
+                { label: "AVG RPE", val: cardioSummary.avgRpe > 0 ? cardioSummary.avgRpe.toFixed(1) : "—" },
+              ].map(s => (
+                <div key={s.label} style={{ flex: 1, background: "#151515", border: "1px solid #222", borderRadius: 8, padding: "10px 8px" }}>
+                  <div style={{ fontSize: 8, color: "#666", letterSpacing: 1, fontFamily: "monospace" }}>{s.label}</div>
+                  <div style={{ fontSize: 15, color: "#E8E8E8", fontWeight: 700, fontFamily: "monospace", marginTop: 3 }}>{s.val}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace", marginBottom: 6 }}>WEEKLY MINUTES</div>
+            <div style={{ background: "#0E0E0E", border: "1px solid #1F1F1F", borderRadius: 10, padding: "10px 6px 6px", marginBottom: 12 }}>
+              {cardioSummary.weekSeries.length >= 2 ? renderBigChart(cardioSummary.weekSeries, "#3AAFA9") : (
+                <div style={{ height: 100, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 12 }}>Log cardio across 2+ weeks to chart volume.</div>
+              )}
+            </div>
+            {cardioSummary.paceRows.length > 0 && (
+              <div>
+                <div style={{ fontSize: 9, color: "#666", letterSpacing: 1, fontFamily: "monospace", marginBottom: 6 }}>PACE BY ACTIVITY · lower = faster</div>
+                {cardioSummary.paceRows.map(row => {
+                  const last = row.series[row.series.length - 1].value;
+                  const t = classifyPace(row.series);
+                  return (
+                    <div key={row.modality} style={{ width: "100%", padding: "10px 12px", background: "#151515", border: "1px solid #222", borderRadius: 8, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#E8E8E8" }}>{row.modality}</div>
+                        <div style={{ fontSize: 10, color: t.color, fontFamily: "monospace", marginTop: 2 }}>{t.label} · {row.series.length}</div>
+                      </div>
+                      {renderSparkline(row.series, t.color)}
+                      <div style={{ textAlign: "right", fontFamily: "monospace", minWidth: 60 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#E8E8E8" }}>{fmtPace(last)}<span style={{ fontSize: 9, color: "#555", marginLeft: 2 }}>/mi</span></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
