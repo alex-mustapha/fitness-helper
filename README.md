@@ -12,6 +12,24 @@ This is a 3-day full body intermediate strength program on a 7-week cycle:
 
 Train any 3 non-consecutive days per week (e.g. Mon/Wed/Fri).
 
+## Cardio
+
+Each workout day has an optional **cardio block** you can add as a **starter** (before the lifts) or a **finisher** (after accessories). Tap **+ Add starter cardio** / **+ Add finisher cardio** and log:
+
+- **Modality** — incline walk, run, bike, row, elliptical, stair, swim, jump rope, other
+- **Duration** (min) and optional **Distance** (mi) — pace is derived automatically
+- **RPE** (1–10) and free-text **Notes**
+
+Cardio is optional and never blocks the "session complete" state. It's saved and cloud-synced as part of the session.
+
+**Programming it without killing your lifts:** the main risk is the interference effect — hard cardio too close to heavy squats/deadlifts hurts strength and recovery. A sensible default:
+
+- **2× Zone 2 / easy steady-state** (30–45 min, incline walk or bike) on **off-days** — aids recovery rather than hurting it.
+- **Optional 1× intervals** on an off-day, kept away from Day A (squat) and Day C (deadlift).
+- A **daily step target** (~8k) as the baseline that matters most.
+
+Short easy cardio as a finisher is low-risk on any day; save intense intervals for off-days.
+
 ## Backend Setup (Supabase — free, ~3 minutes)
 
 The app talks directly to a Supabase Postgres database over its REST API. There is no server code to maintain.

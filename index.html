@@ -338,6 +338,8 @@ const ACCESSORIES = {
   ],
 };
 
+const CARDIO_MODALITIES = ["Incline Walk", "Run", "Bike", "Row", "Elliptical", "Stair Climber", "Swim", "Jump Rope", "Other"];
+
 const resolveAlt = (primary, altId) => {
   const alt = primary.alts?.find(a => a.id === altId);
   if (!alt) return null;
@@ -670,6 +672,35 @@ function App() {
       if (!n.sessions[sk][exId]) n.sessions[sk][exId] = {};
       if (!n.sessions[sk][exId][si]) n.sessions[sk][exId][si] = {};
       n.sessions[sk][exId][si][field] = value;
+      return n;
+    });
+  };
+
+  const addCardio = (pos) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk]._cardio) n.sessions[sk]._cardio = {};
+      if (!n.sessions[sk]._cardio[pos]) n.sessions[sk]._cardio[pos] = { modality: "Incline Walk", duration: "", distance: "", rpe: "", notes: "" };
+      return n;
+    });
+  };
+
+  const setCardio = (pos, field, value) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (!n.sessions[sk]) n.sessions[sk] = {};
+      if (!n.sessions[sk]._cardio) n.sessions[sk]._cardio = {};
+      if (!n.sessions[sk]._cardio[pos]) n.sessions[sk]._cardio[pos] = {};
+      n.sessions[sk]._cardio[pos][field] = value;
+      return n;
+    });
+  };
+
+  const removeCardio = (pos) => {
+    persist(prev => {
+      const n = JSON.parse(JSON.stringify(prev));
+      if (n.sessions[sk]?._cardio) delete n.sessions[sk]._cardio[pos];
       return n;
     });
   };
@@ -1861,6 +1892,50 @@ function App() {
           );
         };
 
+        const renderCardio = (pos) => {
+          const cardioColor = "#3AAFA9";
+          const c = (session._cardio || {})[pos];
+          if (!c) {
+            return (
+              <button key={`cardio-add-${pos}`} onClick={() => addCardio(pos)}
+                style={{ width: "100%", padding: "12px", background: "transparent", border: `1px dashed ${cardioColor}44`, borderRadius: 12, color: cardioColor, fontSize: 13, cursor: "pointer", marginBottom: 10 }}>
+                + Add {pos} cardio
+              </button>
+            );
+          }
+          const dur = parseFloat(c.duration) || 0;
+          const dist = parseFloat(c.distance) || 0;
+          const pace = dur > 0 && dist > 0 ? dur / dist : 0;
+          const paceStr = pace > 0 ? `${Math.floor(pace)}:${String(Math.round((pace - Math.floor(pace)) * 60)).padStart(2, "0")} /mi` : null;
+          const inputStyle = { width: "100%", padding: "8px 10px", background: "#1A1A1A", border: "1px solid #2A3A3A", borderRadius: 8, color: "#E8E8E8", fontSize: 14, fontFamily: "monospace", outline: "none", boxSizing: "border-box" };
+          const fieldWrap = { flex: 1, display: "flex", flexDirection: "column", gap: 4 };
+          const fieldLabel = { fontSize: 10, color: "#666", letterSpacing: 0.5 };
+          return (
+            <div key={`cardio-${pos}`} style={{ background: `${cardioColor}0C`, border: `1px solid ${cardioColor}33`, borderRadius: 14, marginBottom: 10, padding: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: cardioColor, letterSpacing: 2, fontFamily: "monospace", fontWeight: 700, textTransform: "uppercase" }}>🏃 {pos} Cardio</span>
+                <button onClick={() => removeCardio(pos)} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Remove</button>
+              </div>
+              <select value={c.modality || ""} onChange={e => setCardio(pos, "modality", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer", marginBottom: 8 }}>
+                {CARDIO_MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <div style={{ display: "flex", gap: 8 }}>
+                <label style={fieldWrap}><span style={fieldLabel}>Duration (min)</span>
+                  <input type="number" inputMode="decimal" value={c.duration || ""} onChange={e => setCardio(pos, "duration", e.target.value)} style={inputStyle} />
+                </label>
+                <label style={fieldWrap}><span style={fieldLabel}>Distance (mi)</span>
+                  <input type="number" inputMode="decimal" value={c.distance || ""} onChange={e => setCardio(pos, "distance", e.target.value)} style={inputStyle} />
+                </label>
+                <label style={{ ...fieldWrap, flex: "0 0 64px" }}><span style={fieldLabel}>RPE</span>
+                  <input type="number" inputMode="numeric" min="1" max="10" value={c.rpe || ""} onChange={e => setCardio(pos, "rpe", e.target.value)} style={inputStyle} />
+                </label>
+              </div>
+              {paceStr && <div style={{ fontSize: 11, color: cardioColor, fontFamily: "monospace", marginTop: 8 }}>Pace: {paceStr}</div>}
+              <input type="text" value={c.notes || ""} placeholder="Notes (e.g. Zone 2, 8×30s intervals)" onChange={e => setCardio(pos, "notes", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", marginTop: 8 }} />
+            </div>
+          );
+        };
+
         const primaryCards = day.exercises.map(primary => {
           const omittedEx = isOmitted(primary.id);
           const swapId = getSwap(primary.id);
@@ -1949,7 +2024,7 @@ function App() {
             {accessoryPicker}
           </div>
         );
-        return [coreHeader, ...primaryCards, accessoryHeader, ...accessoryCards, accessoryPickerWrap].filter(Boolean);
+        return [renderCardio("starter"), coreHeader, ...primaryCards, accessoryHeader, ...accessoryCards, accessoryPickerWrap, renderCardio("finisher")].filter(Boolean);
       })()}
     </div>
   );
