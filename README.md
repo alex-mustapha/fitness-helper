@@ -79,11 +79,16 @@ The app talks directly to a Supabase Postgres database over its REST API. There 
 
 There's no login. A dropdown in the header lets you pick the active user (default `alex`); each user's data is namespaced by their name. Choose **+ add user…** in the dropdown to add another. Switching users loads that user's data from the cloud automatically.
 
-## Deploy to Netlify
+## Deploy to GitHub Pages
 
-1. Connect this repo to Netlify (or drag-and-drop the folder).
-2. `netlify.toml` publishes the repo root as a static site — no build command, no functions.
-3. Deploys happen automatically from the **main** branch.
+The app is a single static `index.html` that talks directly to Supabase from the browser — no build step and no server, so GitHub Pages hosts it for free with no build minutes.
+
+1. In the repo, go to **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
+3. Set the branch to **main** and the folder to **/ (root)**, then **Save**.
+4. Wait ~1 minute. The app goes live at `https://<your-username>.github.io/strength-tracker/`.
+
+Every push to **main** redeploys automatically (free). The `.nojekyll` file is included so Pages serves the files as-is.
 
 ## Install on Your iPhone
 
