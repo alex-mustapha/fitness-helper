@@ -147,6 +147,10 @@ If you entered the wrong weight or reps, tap **Edit** on any completed set to fi
 
 Tap the **History** button on any exercise to see your last 10 sessions for that movement, with weight and reps for every set.
 
+### Recent sessions at a glance
+
+The top of the **Overview** screen lists your **last 5 sessions** — which day (Push/Pull/Legs), how long ago, a one-line lift breakdown (top set per exercise), and the cardio you did. Handy for deciding what to train when you walk into the gym (e.g. "last was Legs yesterday and Pull before that → today's Push").
+
 ### Track Your Progress
 
 The progress bar at the top shows how many sets you've completed out of the total for the session (e.g. "12/20 sets").

@@ -1000,6 +1000,35 @@ function App() {
       return { label: "flat", color: "#777" };
     };
 
+    // ── Recent sessions (quick "what did I do lately / what's next" glance) ──
+    const bestSet = (exData) => {
+      let best = null;
+      for (const k of Object.keys(exData)) {
+        if (!/^\d+$/.test(k)) continue;
+        const w = parseFloat(exData[k].weight) || 0;
+        const r = parseInt(exData[k].reps) || 0;
+        if (w === 0 && r === 0) continue;
+        if (!best || w > best.w || (w === best.w && r > best.r)) best = { w, r };
+      }
+      return best;
+    };
+    const recentSessions = Object.keys(log.sessions)
+      .filter(k => { const s = log.sessions[k]; return s && Object.keys(s).some(id => !id.startsWith("_") && s[id] && typeof s[id] === "object" && Object.keys(s[id]).some(x => /^\d+$/.test(x))); })
+      .sort().reverse().slice(0, 5)
+      .map(k => {
+        const s = log.sessions[k];
+        const dayDef = DAYS.find(d => d.id === k.slice(11));
+        const exes = Object.keys(s)
+          .filter(id => !id.startsWith("_") && s[id] && typeof s[id] === "object" && Object.keys(s[id]).some(x => /^\d+$/.test(x)))
+          .map(id => ({ name: findExerciseMeta(id)?.name || id, bs: bestSet(s[id]) }));
+        const rawC = s._cardio;
+        const cardio = rawC ? ((rawC.starter || rawC.finisher) ? (rawC.finisher || rawC.starter) : rawC) : null;
+        const [yy, mm, dd] = k.slice(0, 10).split("-").map(Number);
+        const now = new Date();
+        const daysAgo = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(yy, mm - 1, dd)) / 86400000);
+        return { key: k, date: k.slice(0, 10), daysAgo, dayDef, exes, cardio };
+      });
+
     const renderSparkline = (series, color) => {
       if (series.length < 2) return null;
       const w = 80, h = 22;
@@ -1091,6 +1120,29 @@ function App() {
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 80px" }}>
         <button onClick={() => setOverviewView(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer", padding: "8px 0" }}>← Back</button>
         <h2 style={{ margin: "12px 0 16px", fontSize: 20, fontWeight: 700 }}>Overview</h2>
+
+        {/* Recent sessions */}
+        {recentSessions.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 10, color: "#666", letterSpacing: 1, fontFamily: "monospace", marginBottom: 8 }}>RECENT SESSIONS</div>
+            {recentSessions.map(rs => (
+              <div key={rs.key} style={{ background: "#151515", border: "1px solid #222", borderRadius: 10, padding: "10px 12px", marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: rs.dayDef?.color || "#888" }}>{rs.dayDef?.name || rs.key.slice(11)}</span>
+                  <span style={{ fontSize: 10, color: "#666", fontFamily: "monospace" }}>{rs.daysAgo === 0 ? "today" : rs.daysAgo === 1 ? "yesterday" : `${rs.daysAgo}d ago`} · {rs.date.slice(5)}</span>
+                </div>
+                <div style={{ fontSize: 11, color: "#9A9A9A", fontFamily: "monospace", lineHeight: 1.55 }}>
+                  {rs.exes.length ? rs.exes.map(e => `${e.name}${e.bs ? ` ${e.bs.w > 0 ? `${e.bs.w}×${e.bs.r}` : `${e.bs.r}r`}` : ""}`).join("  ·  ") : "—"}
+                </div>
+                {rs.cardio && parseFloat(rs.cardio.duration) > 0 && (
+                  <div style={{ fontSize: 11, color: "#3AAFA9", fontFamily: "monospace", marginTop: 3 }}>
+                    🏃 {rs.cardio.modality} · {rs.cardio.duration} min{rs.cardio.distance ? ` · ${rs.cardio.distance} mi` : ""}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Bodyweight */}
         <div style={{ fontSize: 10, color: "#666", letterSpacing: 1, fontFamily: "monospace", marginBottom: 8 }}>BODYWEIGHT</div>
