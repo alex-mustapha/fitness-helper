@@ -116,6 +116,8 @@ Tap **Day A**, **Day B**, or **Day C** depending on which session you're doing t
 
 Below each exercise you'll see what you lifted last time (e.g. "Last (2026-06-02): 185x5 / 185x5 / 185x5 / 185x4"). Use this to decide your working weight — try to match or beat it.
 
+Right under that, a **🎯 Last est 1RM** line shows your estimated one-rep max from that session (Epley formula) plus your top set — the number to beat. As you complete sets this session, it shows your current estimated 1RM live, and flips to a green **↑ PR!** flag the moment you exceed last time. This makes "push above last time" concrete at a glance.
+
 ### Edit a Completed Set
 
 If you entered the wrong weight or reps, tap **Edit** on any completed set to fix it.

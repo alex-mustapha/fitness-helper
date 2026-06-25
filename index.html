@@ -1847,11 +1847,31 @@ function App() {
 
               {showPicker && renderSwapPicker(primary, swapId, false)}
 
-              {last && (
-                <div style={{ padding: "0 14px 4px", fontSize: 11, color: "#555" }}>
-                  Last ({last.date}): {Object.keys(last.data).filter(s => /^\d+$/.test(s)).sort((a,b)=>a-b).map(si => `${last.data[si].weight||"?"}x${last.data[si].reps||"?"}`).join(" / ")}
-                </div>
-              )}
+              {last && (() => {
+                const lastE1 = computeMetric(last.data, "e1rm");
+                const lastTop = computeMetric(last.data, "top");
+                const doneData = {};
+                for (const k of Object.keys(exData)) { if (/^\d+$/.test(k) && exData[k]?.done) doneData[k] = exData[k]; }
+                const curE1 = computeMetric(doneData, "e1rm");
+                const beat = lastE1 > 0 && curE1 > lastE1;
+                return (
+                  <div style={{ padding: "0 14px 6px" }}>
+                    <div style={{ fontSize: 11, color: "#555" }}>
+                      Last ({last.date}): {Object.keys(last.data).filter(s => /^\d+$/.test(s)).sort((a,b)=>a-b).map(si => `${last.data[si].weight||"?"}x${last.data[si].reps||"?"}`).join(" / ")}
+                    </div>
+                    {lastE1 > 0 && (
+                      <div style={{ fontSize: 11, marginTop: 3, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontFamily: "monospace" }}>
+                        <span style={{ color: day.color }}>🎯 Last est 1RM {lastE1} lb · top {lastTop}</span>
+                        {curE1 > 0 && (
+                          <span style={{ color: beat ? "#4ade80" : "#777", fontWeight: beat ? 700 : 400 }}>
+                            {beat ? `↑ PR! now ${curE1}` : `now ${curE1}`}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div style={{ padding: "8px 14px 14px" }}>
                 {Array.from({ length: slot.sets }, (_, si) => {
