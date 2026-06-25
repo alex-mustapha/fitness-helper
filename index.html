@@ -833,7 +833,7 @@ function App() {
     const color = slope > flat ? "#4ade80" : slope < -flat ? "#E0A85A" : "#777";
     const icon = slope > flat ? "↗" : slope < -flat ? "↘" : "→";
     const label = slope > flat ? "improving" : slope < -flat ? "slipping" : "flat";
-    const net = Math.round(series[n - 1].value - series[0].value);
+    const net = Math.round(slope * (n - 1));   // fitted change over the window — sign matches the label
     const w = 64, h = 20;
     const vals = series.map(d => d.value);
     const min = Math.min(...vals), max = Math.max(...vals);
@@ -844,7 +844,7 @@ function App() {
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", flexShrink: 0 }}>
           <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span style={{ fontSize: 10, color, fontFamily: "monospace" }}>{icon} {label}{net !== 0 ? ` (${net > 0 ? "+" : ""}${net})` : ""} · {n}</span>
+        <span style={{ fontSize: 10, color, fontFamily: "monospace" }}>{icon} {label}{label !== "flat" && net !== 0 ? ` (${net > 0 ? "+" : ""}${net})` : ""} · {n}</span>
       </div>
     );
   };
