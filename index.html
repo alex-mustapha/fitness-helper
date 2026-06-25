@@ -340,6 +340,25 @@ const ACCESSORIES = {
 
 const CARDIO_MODALITIES = ["Incline Walk", "Run", "Bike", "Row", "Elliptical", "Stair Climber", "Swim", "Jump Rope", "Other"];
 
+// Heart-rate intensity targets. lo/hi are fractions of max HR.
+const HR_ZONES = [
+  { id: "recovery", zone: "Z1", name: "Recovery", lo: 0.50, hi: 0.60, rpe: "2–3",
+    talk: "Easy full conversation, barely breathing hard.",
+    coasting: "This one is meant to be light — keep it gentle." },
+  { id: "easy", zone: "Z2", name: "Easy Aerobic", lo: 0.60, hi: 0.70, rpe: "3–4",
+    talk: "You can talk in full sentences, but would rather breathe.",
+    coasting: "If you can chat or sing effortlessly, you're coasting — pick it up until talking takes mild effort." },
+  { id: "tempo", zone: "Z3", name: "Tempo", lo: 0.70, hi: 0.80, rpe: "5–6",
+    talk: "Short sentences only.",
+    coasting: "If full sentences are easy, you're under target — push until you can only get a few words out." },
+  { id: "threshold", zone: "Z4", name: "Threshold", lo: 0.80, hi: 0.90, rpe: "7–8",
+    talk: "A word or two at a time.",
+    coasting: "If you can still hold a conversation, you're not at threshold — work harder." },
+  { id: "intervals", zone: "Z5", name: "VO₂ / Intervals", lo: 0.90, hi: 1.00, rpe: "9–10",
+    talk: "Can't talk.",
+    coasting: "During work intervals you should be near all-out — if you could talk, go harder." },
+];
+
 const resolveAlt = (primary, altId) => {
   const alt = primary.alts?.find(a => a.id === altId);
   if (!alt) return null;
@@ -472,6 +491,11 @@ const guideLinkStyle = {
 function App() {
   const [activeDay, setActiveDay] = useState(0);
   const [currentUser, setCurrentUser] = useState(loadCurrentUser);
+  const [maxHR, setMaxHRState] = useState(() => localStorage.getItem(`st-maxhr::${loadCurrentUser()}`) || "");
+  const setMaxHR = (val) => {
+    setMaxHRState(val);
+    try { if (val) localStorage.setItem(`st-maxhr::${currentUser}`, val); else localStorage.removeItem(`st-maxhr::${currentUser}`); } catch {}
+  };
   const [log, setLog] = useState(() => { migrateLegacy(loadCurrentUser()); return load(loadCurrentUser()); });
   const [activeSet, setActiveSet] = useState(null);
   const [historyView, setHistoryView] = useState(null);
@@ -506,7 +530,7 @@ function App() {
   useEffect(() => {
     try { localStorage.setItem(CURRENT_USER_KEY, currentUser); } catch {}
     migrateLegacy(currentUser);
-    if (didInitUser.current) setLog(load(currentUser));
+    if (didInitUser.current) { setLog(load(currentUser)); setMaxHRState(localStorage.getItem(`st-maxhr::${currentUser}`) || ""); }
     didInitUser.current = true;
     let cancelled = false;
     (async () => {
@@ -681,7 +705,7 @@ function App() {
       const n = JSON.parse(JSON.stringify(prev));
       if (!n.sessions[sk]) n.sessions[sk] = {};
       if (!n.sessions[sk]._cardio) n.sessions[sk]._cardio = {};
-      if (!n.sessions[sk]._cardio[pos]) n.sessions[sk]._cardio[pos] = { modality: "Incline Walk", duration: "", distance: "", rpe: "", notes: "" };
+      if (!n.sessions[sk]._cardio[pos]) n.sessions[sk]._cardio[pos] = { modality: "Incline Walk", goal: pos === "finisher" ? "tempo" : "easy", duration: "", distance: "", rpe: "", notes: "" };
       return n;
     });
   };
@@ -1910,15 +1934,27 @@ function App() {
           const inputStyle = { width: "100%", padding: "8px 10px", background: "#1A1A1A", border: "1px solid #2A3A3A", borderRadius: 8, color: "#E8E8E8", fontSize: 14, fontFamily: "monospace", outline: "none", boxSizing: "border-box" };
           const fieldWrap = { flex: 1, display: "flex", flexDirection: "column", gap: 4 };
           const fieldLabel = { fontSize: 10, color: "#666", letterSpacing: 0.5 };
+          const zone = HR_ZONES.find(z => z.id === (c.goal || "easy")) || HR_ZONES[1];
+          const mhr = parseInt(maxHR) || 0;
+          const hrTarget = mhr > 0 ? `${Math.round(mhr * zone.lo)}–${Math.round(mhr * zone.hi)} bpm` : `${Math.round(zone.lo * 100)}–${Math.round(zone.hi * 100)}% of max HR`;
           return (
             <div key={`cardio-${pos}`} style={{ background: `${cardioColor}0C`, border: `1px solid ${cardioColor}33`, borderRadius: 14, marginBottom: 10, padding: "14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <span style={{ fontSize: 11, color: cardioColor, letterSpacing: 2, fontFamily: "monospace", fontWeight: 700, textTransform: "uppercase" }}>🏃 {pos} Cardio</span>
                 <button onClick={() => removeCardio(pos)} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>Remove</button>
               </div>
-              <select value={c.modality || ""} onChange={e => setCardio(pos, "modality", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer", marginBottom: 8 }}>
-                {CARDIO_MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <label style={fieldWrap}><span style={fieldLabel}>Activity</span>
+                  <select value={c.modality || ""} onChange={e => setCardio(pos, "modality", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer" }}>
+                    {CARDIO_MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </label>
+                <label style={fieldWrap}><span style={fieldLabel}>Target intensity</span>
+                  <select value={c.goal || "easy"} onChange={e => setCardio(pos, "goal", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", cursor: "pointer" }}>
+                    {HR_ZONES.map(z => <option key={z.id} value={z.id}>{z.zone} · {z.name}</option>)}
+                  </select>
+                </label>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <label style={fieldWrap}><span style={fieldLabel}>Duration (min)</span>
                   <input type="number" inputMode="decimal" value={c.duration || ""} onChange={e => setCardio(pos, "duration", e.target.value)} style={inputStyle} />
@@ -1932,6 +1968,26 @@ function App() {
               </div>
               {paceStr && <div style={{ fontSize: 11, color: cardioColor, fontFamily: "monospace", marginTop: 8 }}>Pace: {paceStr}</div>}
               <input type="text" value={c.notes || ""} placeholder="Notes (e.g. Zone 2, 8×30s intervals)" onChange={e => setCardio(pos, "notes", e.target.value)} style={{ ...inputStyle, fontFamily: "inherit", marginTop: 8 }} />
+
+              {/* Intensity guidance — desired zone + how to tell if you're coasting */}
+              <div style={{ marginTop: 10, padding: "10px 12px", background: "#0F1A1A", border: `1px solid ${cardioColor}33`, borderRadius: 10 }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: cardioColor }}>Target: {zone.zone} · {zone.name}</span>
+                  <span style={{ fontSize: 12, color: "#CFE", fontFamily: "monospace" }}>{hrTarget} · RPE {zone.rpe}</span>
+                </div>
+                <div style={{ fontSize: 11, color: "#8AA", marginTop: 6, lineHeight: 1.5 }}>
+                  <strong style={{ color: "#AED" }}>Talk test:</strong> {zone.talk}
+                </div>
+                <div style={{ fontSize: 11, color: "#C9A86A", marginTop: 4, lineHeight: 1.5 }}>
+                  <strong style={{ color: "#E0B870" }}>Coasting check:</strong> {zone.coasting}
+                </div>
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: "#566" }}>Max HR</span>
+                  <input type="number" inputMode="numeric" value={maxHR} onChange={e => setMaxHR(e.target.value)} placeholder="e.g. 185"
+                    style={{ width: 70, padding: "4px 8px", background: "#1A1A1A", border: "1px solid #2A3A3A", borderRadius: 6, color: "#E8E8E8", fontSize: 12, fontFamily: "monospace", outline: "none" }} />
+                  <span style={{ fontSize: 10, color: "#566" }}>{maxHR ? "→ shows bpm targets" : "set once for bpm targets (else ≈ 220 − age)"}</span>
+                </div>
+              </div>
             </div>
           );
         };

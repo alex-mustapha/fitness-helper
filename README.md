@@ -16,11 +16,23 @@ Train any 3 non-consecutive days per week (e.g. Mon/Wed/Fri).
 
 Each workout day has an optional **cardio block** you can add as a **starter** (before the lifts) or a **finisher** (after accessories). Tap **+ Add starter cardio** / **+ Add finisher cardio** and log:
 
-- **Modality** — incline walk, run, bike, row, elliptical, stair, swim, jump rope, other
+- **Activity** — incline walk, run, bike, row, elliptical, stair, swim, jump rope, other
+- **Target intensity** — Z1 Recovery, Z2 Easy Aerobic, Z3 Tempo, Z4 Threshold, Z5 VO₂/Intervals
 - **Duration** (min) and optional **Distance** (mi) — pace is derived automatically
 - **RPE** (1–10) and free-text **Notes**
 
 Cardio is optional and never blocks the "session complete" state. It's saved and cloud-synced as part of the session.
+
+### Intensity guidance — "am I coasting?"
+
+Each cardio block shows a guidance panel for the chosen target intensity so you know whether you're actually working:
+
+- **Target HR** — shown as a **bpm range** if you enter your **Max HR** once (stored per user), otherwise as a **% of max HR** (estimate max ≈ 220 − age).
+- **Target RPE** for the zone.
+- **Talk test** — what your breathing/speech should feel like at that intensity.
+- **Coasting check** — a concrete cue for when you're under target (e.g. "if you can chat effortlessly in Zone 2, pick it up until talking takes mild effort").
+
+Note: a web app cannot read Apple Watch / HealthKit data directly (no browser API for it), so this is self-check guidance rather than an automatic HR feed. Glance at your watch and compare to the target range.
 
 **Programming it without killing your lifts:** the main risk is the interference effect — hard cardio too close to heavy squats/deadlifts hurts strength and recovery. A sensible default:
 
