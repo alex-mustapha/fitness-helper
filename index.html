@@ -302,6 +302,120 @@ const ACCESSORIES = {
   ],
 };
 
+// ─── Kettlebell (home) program ───────────────────────────────────────
+// A 3-day full-body split for a minimal kit (one or two bells). Day ids are
+// prefixed "kb-" so sessions never collide with the gym program's a/b/c.
+const KB_DAYS = [
+  {
+    id: "kb-a", name: "KB Push", subtitle: "Squat · Press · Hinge", color: "#E63946", cardioGoal: "easy", cardioModality: "Jump Rope",
+    exercises: [
+      { id: "kb-goblet", name: "Goblet Squat", sets: 4, reps: "8-10", rest: "90 sec",
+        alts: [
+          { id: "kb-front-squat", name: "Double KB Front Squat", reps: "6-8" },
+          { id: "kb-reverse-lunge", name: "KB Reverse Lunge", reps: "8/leg" },
+        ] },
+      { id: "kb-press", name: "KB Overhead Press", sets: 3, reps: "6-8/arm", rest: "90 sec",
+        alts: [
+          { id: "kb-push-press", name: "KB Push Press", reps: "6-8/arm" },
+          { id: "kb-half-kneel-press", name: "Half-kneeling Press", reps: "8/arm" },
+          { id: "kb-double-press", name: "Double KB Press", reps: "6-8" },
+        ] },
+      { id: "kb-floor-press", name: "KB Floor Press", sets: 3, reps: "8-10/arm", rest: "75 sec",
+        alts: [
+          { id: "kb-pushup", name: "Push-up", reps: "10-15" },
+          { id: "kb-double-floor-press", name: "Double KB Floor Press", reps: "8-10" },
+        ] },
+      { id: "kb-swing", name: "KB Swing", sets: 4, reps: "15-20", rest: "60 sec",
+        alts: [
+          { id: "kb-dead-swing", name: "Dead-stop Swing", reps: "10-12" },
+          { id: "kb-1arm-swing", name: "Single-arm Swing", reps: "12/arm" },
+        ] },
+    ],
+  },
+  {
+    id: "kb-b", name: "KB Pull", subtitle: "Hinge · Row · Carry", color: "#457B9D", cardioGoal: "easy", cardioModality: "Jump Rope",
+    exercises: [
+      { id: "kb-heavy-swing", name: "KB Swing (heavy)", sets: 5, reps: "12-15", rest: "75 sec",
+        alts: [
+          { id: "kb-1arm-swing-b", name: "Single-arm Swing", reps: "12/arm" },
+          { id: "kb-hike-swing", name: "Dead-stop Swing", reps: "10" },
+        ] },
+      { id: "kb-row", name: "Single-arm KB Row", sets: 4, reps: "8-10/arm", rest: "75 sec",
+        alts: [
+          { id: "kb-gorilla-row", name: "Gorilla Row (2 KB)", reps: "8-10/arm" },
+          { id: "kb-bent-row", name: "Bent-over Row", reps: "10-12" },
+        ] },
+      { id: "kb-clean", name: "KB Clean", sets: 3, reps: "6-8/arm", rest: "75 sec",
+        alts: [
+          { id: "kb-dead-clean", name: "Dead Clean", reps: "6/arm" },
+          { id: "kb-clean-press", name: "Clean & Press", reps: "5-6/arm" },
+        ] },
+      { id: "kb-rdl", name: "KB Romanian Deadlift", sets: 3, reps: "10-12", rest: "75 sec",
+        alts: [
+          { id: "kb-single-rdl", name: "Single-leg RDL", reps: "8-10/leg" },
+          { id: "kb-suitcase-rdl", name: "Suitcase RDL", reps: "10/side" },
+        ] },
+      { id: "kb-carry", name: "Suitcase / Rack Carry", sets: 3, reps: "30-40 yd", rest: "60 sec",
+        alts: [
+          { id: "kb-farmer-carry", name: "Farmer Carry (2 KB)", reps: "40 yd" },
+          { id: "kb-oh-carry", name: "Overhead Carry", reps: "20 yd/arm" },
+        ] },
+    ],
+  },
+  {
+    id: "kb-c", name: "KB Conditioning", subtitle: "Ballistic · Core · HIIT", color: "#2A9D8F", cardioGoal: "threshold", cardioModality: "Jump Rope",
+    exercises: [
+      { id: "kb-tgu", name: "Turkish Get-up", sets: 3, reps: "3-5/side", rest: "90 sec",
+        alts: [
+          { id: "kb-half-getup", name: "Half Get-up", reps: "5/side" },
+          { id: "kb-getup-situp", name: "Get-up Sit-up", reps: "6/side" },
+        ] },
+      { id: "kb-snatch", name: "KB Snatch", sets: 4, reps: "8-10/arm", rest: "75 sec",
+        alts: [
+          { id: "kb-high-pull", name: "KB High Pull", reps: "10/arm" },
+          { id: "kb-clean-jerk", name: "Clean & Jerk", reps: "6-8/arm" },
+        ] },
+      { id: "kb-goblet-c", name: "Goblet Squat", sets: 3, reps: "12-15", rest: "60 sec",
+        alts: [
+          { id: "kb-pause-goblet", name: "Paused Goblet Squat", reps: "8-10" },
+          { id: "kb-cossack", name: "Cossack Squat", reps: "8/side" },
+        ] },
+      { id: "kb-swing-c", name: "KB Swing (EMOM)", sets: 5, reps: "10", rest: "EMOM",
+        alts: [
+          { id: "kb-snatch-emom", name: "Snatch (EMOM)", reps: "6/arm" },
+          { id: "kb-2hand-swing", name: "Two-hand Swing", reps: "15" },
+        ] },
+      { id: "kb-core", name: "Hollow / Plank Hold", sets: 3, reps: "30-45s", rest: "45 sec",
+        alts: [
+          { id: "kb-russian-twist", name: "KB Russian Twist", reps: "15/side" },
+          { id: "kb-side-plank", name: "Side Plank", reps: "30s/side" },
+        ] },
+    ],
+  },
+];
+const KB_ACCESSORIES = {
+  "kb-a": [
+    { id: "kb-halo", name: "KB Halo", sets: 3, reps: "8/dir", rest: "45 sec" },
+    { id: "kb-tricep-ext", name: "KB Overhead Triceps Ext", sets: 3, reps: "10-12", rest: "60 sec" },
+  ],
+  "kb-b": [
+    { id: "kb-curl", name: "KB Curl", sets: 3, reps: "10-12", rest: "60 sec" },
+    { id: "kb-shrug", name: "KB Shrug", sets: 3, reps: "12-15", rest: "45 sec" },
+  ],
+  "kb-c": [
+    { id: "kb-windmill", name: "KB Windmill", sets: 3, reps: "5-6/side", rest: "60 sec" },
+    { id: "kb-figure8", name: "KB Figure-8", sets: 3, reps: "10/dir", rest: "45 sec" },
+  ],
+};
+
+// Aliases + combined lookups: the gym program keeps the canonical DAYS name;
+// module-level helpers search ALL programs so history/labels resolve for both.
+const GYM_DAYS = DAYS;
+const GYM_ACCESSORIES = ACCESSORIES;
+const PROGRAMS = { gym: { label: "Gym", days: GYM_DAYS, accessories: GYM_ACCESSORIES }, kb: { label: "Home (KB)", days: KB_DAYS, accessories: KB_ACCESSORIES } };
+const ALL_DAYS = [...GYM_DAYS, ...KB_DAYS];
+const ALL_ACCESSORIES = { ...GYM_ACCESSORIES, ...KB_ACCESSORIES };
+
 const CARDIO_MODALITIES = ["Incline Walk", "Run", "Bike", "Row", "Elliptical", "Stair Climber", "Swim", "Jump Rope", "Other"];
 
 // Heart-rate intensity targets. lo/hi are fractions of max HR.
@@ -427,19 +541,19 @@ const computeMetric = (sessionData, metric) => {
 };
 
 const findExerciseMeta = (id) => {
-  for (let di = 0; di < DAYS.length; di++) {
-    const d = DAYS[di];
+  for (let di = 0; di < ALL_DAYS.length; di++) {
+    const d = ALL_DAYS[di];
     const primary = d.exercises.find(e => e.id === id);
     if (primary) return { name: primary.name, type: "primary", dayId: d.id, dayIndex: di };
   }
-  for (const d of DAYS) {
+  for (const d of ALL_DAYS) {
     for (const p of d.exercises) {
       const alt = p.alts?.find(a => a.id === id);
       if (alt) return { name: alt.name, type: "alt" };
     }
   }
-  for (const dayId in ACCESSORIES) {
-    const acc = ACCESSORIES[dayId].find(a => a.id === id);
+  for (const dayId in ALL_ACCESSORIES) {
+    const acc = ALL_ACCESSORIES[dayId].find(a => a.id === id);
     if (acc) return { name: acc.name, type: "accessory" };
   }
   return { name: id, type: "unknown" };
@@ -506,12 +620,23 @@ const searchFoods = (query, limit = 8) => {
 
 // Macros logged today for the strength side: which day (if any) was trained.
 const trainingToday = (log, tk) => {
-  for (let i = 0; i < DAYS.length; i++) {
-    const d = DAYS[i];
+  for (let i = 0; i < ALL_DAYS.length; i++) {
+    const d = ALL_DAYS[i];
     const s = log.sessions?.[`${tk}-${d.id}`];
     if (!s) continue;
-    const sets = Object.keys(s).filter(k => /^\d+$/.test(k) && ((parseFloat(s[k].weight) || 0) > 0 || (parseInt(s[k].reps) || 0) > 0));
-    if (sets.length) return { dayIndex: i, day: d, volume: computeMetric(s, "volume"), setCount: sets.length };
+    // Session shape: { exerciseId: { setIndex: {weight, reps, done} }, _cardio: …, _omitted: … }
+    let setCount = 0, volume = 0;
+    for (const exId of Object.keys(s)) {
+      if (exId.startsWith("_")) continue; // skip metadata (_cardio/_omitted/_accessories/…)
+      const setMap = s[exId];
+      if (!setMap || typeof setMap !== "object") continue;
+      for (const si of Object.keys(setMap)) {
+        if (!/^\d+$/.test(si)) continue;
+        const w = parseFloat(setMap[si].weight) || 0, r = parseInt(setMap[si].reps) || 0;
+        if (w > 0 || r > 0) { setCount++; volume += w * r; }
+      }
+    }
+    if (setCount) return { dayIndex: i, day: d, volume, setCount };
   }
   return null;
 };
@@ -1123,6 +1248,12 @@ function App() {
   const [chestOpen, setChestOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("today");
   const [activeDate, setActiveDate] = useState(todayKey());
+  const [activeProgram, setActiveProgramState] = useState(() => (PROGRAMS[localStorage.getItem(`st-program::${loadCurrentUser()}`)] ? localStorage.getItem(`st-program::${loadCurrentUser()}`) : "gym"));
+  const setActiveProgram = (p) => {
+    setActiveProgramState(p);
+    setActiveDay(0); // day list changes with the program
+    try { localStorage.setItem(`st-program::${currentUser}`, p); } catch {}
+  };
   const prevCompleteRef = useRef({});
   const prevCompleted = useRef(0);
   const autoSavedRef = useRef({});
@@ -1140,7 +1271,7 @@ function App() {
   useEffect(() => {
     try { localStorage.setItem(CURRENT_USER_KEY, currentUser); } catch {}
     migrateLegacy(currentUser);
-    if (didInitUser.current) { setLog(ensureDemoDiet(load(currentUser), currentUser)); setMaxHRState(localStorage.getItem(`st-maxhr::${currentUser}`) || ""); }
+    if (didInitUser.current) { setLog(ensureDemoDiet(load(currentUser), currentUser)); setMaxHRState(localStorage.getItem(`st-maxhr::${currentUser}`) || ""); const p = localStorage.getItem(`st-program::${currentUser}`); setActiveProgramState(PROGRAMS[p] ? p : "gym"); setActiveDay(0); }
     didInitUser.current = true;
     let cancelled = false;
     (async () => {
@@ -1166,6 +1297,9 @@ function App() {
     return () => clearTimeout(t);
   }, [restTimer, restLeft]);
 
+  // Active program drives the Train tab; shadows the module DAYS/ACCESSORIES.
+  const DAYS = PROGRAMS[activeProgram].days;
+  const ACCESSORIES = PROGRAMS[activeProgram].accessories;
   const day = DAYS[activeDay];
   const tk = activeDate;
   const sk = `${tk}-${day.id}`;
@@ -2330,6 +2464,19 @@ function App() {
           )}
           <button onClick={() => setOverviewView(true)} title="Cross-exercise history and bodyweight trends" style={{ background: "#1A1A1A", border: "1px solid #2A2A3A", color: "#9AC", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Overview</button>
           <button onClick={clearAllData} title="Clear all data for this user (device + cloud)" style={{ background: "#1A1A1A", border: "1px solid #3A2525", color: "#A66", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>Clear All</button>
+        </div>
+      </div>
+
+      {/* Program switcher — Gym (PPL) vs Home (kettlebell) */}
+      <div style={{ background: "#151515", border: "1px solid #222", borderRadius: 12, padding: "8px 10px", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 11, color: "#888", fontFamily: "monospace" }}>Program</span>
+        <div style={{ display: "flex", gap: 4, background: "#0E0E0E", border: "1px solid #2A2A2A", borderRadius: 8, padding: 3 }}>
+          {Object.entries(PROGRAMS).map(([key, p]) => {
+            const on = activeProgram === key;
+            return (
+              <button key={key} onClick={() => setActiveProgram(key)} style={{ border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: on ? 700 : 500, cursor: "pointer", background: on ? "#34d399" : "transparent", color: on ? "#0F0F0F" : "#999" }}>{p.label}</button>
+            );
+          })}
         </div>
       </div>
 
